@@ -41,12 +41,12 @@ const int deadband = 4; // Ignore changes smaller than this to suppress noise fl
 // Application Class(es)
 // ================================================================
 // BEFORE incliding DcsBios.h, select one of the supported Serial port implementations
-    // ATmegaU Polling based (Ardunio UNO etc) - not our board
-    //#define DCSBIOS_STANDARD_SERIAL
+    // Arduino Serial Class (most generic, polls)
+    //#define DCSBIOS_DEFAULT_SERIAL
     // ATmegaU IRQ based (Ardunio UNO etc) - not our board
     //#define DCSBIOS_IRQ_SERIAL
-    // DCS-BIOS, use a custom serial driver
-    //#define DCSBIOS_CUSTOM_SERIAL
+
+    // NEW TO DCS-BIOS
     // DCS-BIOS, use the CompositeSerial (my implementation) serial driver
     #define DCSBIOS_USBCOMPOSITE_STM32F1_SERIAL
 #include "DcsBios.h"            // DCS World BIOS Class Rx/Tx over Serial (DcsBios::)
