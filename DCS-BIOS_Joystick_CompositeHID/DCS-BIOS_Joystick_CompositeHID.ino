@@ -5,26 +5,13 @@
 // HID - Keyboard, Mouse, Joystick, Gamepad
 // CDC - Virtual Communications Port
 // Mass Storage Devivce, MIDI, Audio, Xbox360|XboxOne
-#include "USBComposite.h"
+#include <USBComposite.h>
 
-USBHID HID;                         // Create USB HID Base Class
-USBCompositeSerial CompositeSerial; // Create CDC Virtual Com Port
-HIDJoystick Joystick(HID);          // Create HID Joystick
-/*
-// ================================================================
-// Uncomment if you want the Joystick values to change from 10 bits to 9..16 bits
-//#define JOYSTICK_REPORT_10BIT_ANALOG   // 10 bit = 0..1023 (default)
-#define JOYSTICK_REPORT_12BIT_ANALOG     // 12 bit = 0..4095
-//#define JOYSTICK_REPORT_16BIT_ANALOG   // 16 bit = 0..65535
-#define JOYSTICK_REPORT_BUTTONS 8
-#define JOYSTICK_REPORT_AXIS 8
-// Uncomment this if you want each digital input to have a complementary pair of buttons
-// Useful if you need to have an ON and OFF event presented as two ON events
-#define CUSTOMJOYSTICK_USB_REPORT_COMPLEMENTARY_BUTTONS
-// Create a custom Joystick Report based on the number of digital inputs and analog inputs (and their bit depth)
-#include "CustomJoystick_USB_Report.h"
-//HIDReporter CustomJoystick(CompositeSerial, HID, reportDescription, 1);
-*/
+// Custom Joystick layout - 32 buttons, 8 axis (10bit range, 16bit packing)
+#include "HIDCustomJoystick.h"
+
+USBHID HID;
+HIDCustomJoystick CustomJoystick(HID);
 
 // ================================================================
 // Board Inputs
@@ -37,47 +24,39 @@ const float alpha = 0.15;
 const int deadband = 4; // Ignore changes smaller than this to suppress noise floors
 
 // Digital Inputs
-const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15};
+const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15}; // ACTIVE = LOW
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 
-struct JoystickReport
+struct CustomJoystickReport
 {
-    uint16_t axis[analogPinCount];
     uint32_t buttons; // Supports up to 32 buttons stored in bits
+    uint16_t axis[analogPinCount];
 } report, lastReport;
+size_t reportSize = 0;
 
 // ================================================================
-// Application Class(es)
+// Middleware - DCS-BIOS, MobiFligt, SimTool etc
 // ================================================================
-// BEFORE incliding DcsBios.h, select one of the supported Serial port implementations
-#define DCSBIOS_DEFAULT_SERIAL // (default) Arduino Serial Class (most generic, polls)
-// #define DCSBIOS_IRQ_SERIAL            // ATmegaU IRQ based (Ardunio UNO etc)
-
-// NEW TO DCS-BIOS - use the CompositeSerial (my implementation) serial driver
-// #define DCSBIOS_USBCOMPOSITE_STM32F1_SERIAL
+// DCS-BIOS
+// My implmentation that adds CompositeSerial:: support to DCS-BIOS (this URL until it's upstreamed)
+// A ZIP file of this repo is installed into the Arduino IDE instead of the original from DCS-Skunkworks
+// https://github.com/wotupfoo/dcs-bios-arduino-library forked from DCS-Skunkworks/dcs-bios-arduino-library
+#define DCSBIOS_USBCOMPOSITE_STM32F1_SERIAL // NEW: Functionality added into WotUpFoo fork in src/DcsBios.h
 #ifdef DCSBIOS_USBCOMPOSITE_STM32F1_SERIAL
 // Helpers to ensure DCS-BIOS strings go to our Composite Serial
 void dcsbiosSendChar(char c) { CompositeSerial.write(c); }
 void sendDcsBiosMessage(const char *msg) { CompositeSerial.print(msg); }
 #endif
+
 #include "DcsBios.h" // DCS World BIOS Class Rx/Tx over Serial (DcsBios::)
 
-// ================================================================
-// ARDUINO CODE
-// ================================================================
 void setup()
 {
-    /*
-        HID.begin(CompositeSerial,
-                    Joystick_8x_16bit_analog_and_8_digitalpins_USB_reportDescription,
-                    sizeof(Joystick_8x_16bit_analog_and_8_digitalpins_USB_reportDescription));
-    */
-    HID.begin(CompositeSerial, HID_JOYSTICK);
+    reportSize = sizeof(report);
+    HID.begin(HID_JOYSTICK);
     while (!USBComposite)
         ;
-    Joystick.setManualReportMode(true);
 
-    DcsBios::setup();
     for (int i = 0; i < analogPinCount; i++)
     {
         pinMode(analogPins[i], INPUT_ANALOG);
@@ -91,7 +70,6 @@ void setup()
 
 void loop()
 {
-    DcsBios::loop();
     bool changed = false;
 
     // 1. Process Analog with Change Detection
@@ -101,25 +79,20 @@ void loop()
         filteredValues[i] = (alpha * raw) + ((1.0 - alpha) * filteredValues[i]);
         uint16_t currentVal = (uint16_t)filteredValues[i];
 
-        // Only mark as changed if it exceeds the noise deadband
+        // Only change if it exceeds the noise deadband
         if (abs((int)currentVal - (int)lastReport.axis[i]) > deadband)
         {
-            report.axis[i] = currentVal;
+            CustomJoystick.axis(i, currentVal);
             changed = true;
-        }
-        else
-        {
-            report.axis[i] = lastReport.axis[i]; // Keep stable
         }
     }
 
     // 2. Process Buttons with Change Detection
-    report.buttons = 0;
     for (int i = 0; i < digitalPinCount; i++)
     {
         if (digitalRead(digitalPins[i]) == LOW)
         {
-            report.buttons |= (1 << i);
+            CustomJoystick.button(i + 1, 1); // Buttons are 1..32 so use i+1
         }
     }
     if (report.buttons != lastReport.buttons)
@@ -128,8 +101,9 @@ void loop()
     // 3. Conditional Send
     if (changed)
     {
-        Joystick.send(&report, sizeof(report));
-        lastReport = report; // Sync
+        CustomJoystick.send();
+        lastReport.buttons = report.buttons;
+        memcpy(lastReport.axis, report.axis, sizeof(report.axis)); // Sync
     }
 
     delay(5); // Fast polling, but 'changed' logic prevents USB flooding

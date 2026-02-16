@@ -1,6 +1,25 @@
 #pragma once
 #define CUSTOMJOYSTICK_USB_REPORT_H
 
+/*
+EXAMPLE CODE [WORK IN PROGRESS]
+// ================================================================
+// Uncomment if you want the Joystick values to change from 10 bits to 9..16 bits
+//#define JOYSTICK_REPORT_10BIT_ANALOG   // 10 bit = 0..1023 (default)
+#define JOYSTICK_REPORT_12BIT_ANALOG     // 12 bit = 0..4095
+//#define JOYSTICK_REPORT_16BIT_ANALOG   // 16 bit = 0..65535
+#define JOYSTICK_REPORT_BUTTONS 8
+#define JOYSTICK_REPORT_AXIS 8
+// Uncomment this if you want each digital input to have a complementary pair of buttons
+// Useful if you need to have an ON and OFF event presented as two ON events
+#define CUSTOMJOYSTICK_USB_REPORT_COMPLEMENTARY_BUTTONS
+// Create a custom Joystick Report based on the number of digital inputs and analog inputs (and their bit depth)
+#include "CustomJoystick_USB_Report.h"
+//HIDReporter CustomJoystick(CompositeSerial, HID, reportDescription, 1);
+*/
+
+
+
 // AWESOME Video by Ben Eater on YouTube on how USB works
 // How does USB device discovery work?
 // https://www.youtube.com/watch?v=N0O5Uwc3C0o
