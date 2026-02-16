@@ -1,0 +1,3 @@
+[submodule "modules/dcs-bios-arduino-library"]
+	path = modules/dcs-bios-arduino-library
+	url = C:\\github.com\\wotupfoo\\dcs-bios-arduino-library
