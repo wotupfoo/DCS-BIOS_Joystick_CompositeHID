@@ -11,8 +11,15 @@
 // Custom Joystick layout - 32 buttons, 8 axis (10bit range, 16bit packing)
 #include "HIDCustomJoystick.h"
 
+// The first endpoint will be the CompositeSerial followed by whatever is 
+// put in this array. Currently only a single custom configured joystick
+const uint8 reportDescription[] = {
+  HID_CUSTOM_JOYSTICK_REPORT_DESCRIPTOR()
+};
+
 USBHID HID;
 HIDCustomJoystick CustomJoystick(HID);
+CustomJoystickReport_t report, lastReport;
 
 // ================================================================
 // Board Inputs
@@ -28,20 +35,16 @@ const int deadband = 4; // Ignore changes smaller than this to suppress noise fl
 const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15}; // ACTIVE = LOW
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 
-struct CustomJoystickReport
-{
-    uint32_t buttons; // Supports up to 32 buttons stored in bits
-    uint16_t axis[analogPinCount];
-} report, lastReport;
-size_t reportSize = 0;
+void setup() {
+    // MIDDLEWARE SETUP
+    // Create a Serial port and whatever is in the reportDescrition
+    HID.begin(CompositeSerial, reportDescription, sizeof(reportDescription));
+    USBComposite.begin();  
+    while (!USBComposite);
 
-void setup()
-{
-    reportSize = sizeof(report);
-    HID.begin(HID_JOYSTICK);
-    while (!USBComposite)
-        ;
+    CustomJoystick.setManualReportMode(true);
 
+    // HARDWARE SETUP
     for (int i = 0; i < analogPinCount; i++)
     {
         pinMode(analogPins[i], INPUT_ANALOG);

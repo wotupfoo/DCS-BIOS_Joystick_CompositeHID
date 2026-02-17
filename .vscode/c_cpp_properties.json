@@ -4,11 +4,11 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/Users/erichards/GoogleDrive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/cores/**",
-                "C:/Users/erichards/GoogleDrive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/libraries/**",
-                "C:/Users/erichards/GoogleDrive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/system/**",
-                "C:/Users/erichards/GoogleDrive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/variants/generic_stm32f103c/**",
-                "C:/Users/erichards/GoogleDrive/EmbeddedElectronics/Arduino/libraries/**"
+                "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/cores/**",
+                "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/libraries/**",
+                "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/system/**",
+                "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/variants/generic_stm32f103c/**",
+                "G:/My Drive/EmbeddedElectronics/Arduino/libraries/**"
             ],
             "defines": [
                 "_DEBUG",

@@ -1,4 +1,4 @@
-#include "USBHID.h"
+#include <USBComposite.h>
 
 // AWESOME Video by Ben Eater on YouTube on how USB works
 // "How does USB device discovery work?"
@@ -6,12 +6,6 @@
 
 // only works for little-endian machines, but makes the code so much more
 // readable
-
-typedef struct
-{
-	uint32_t buttons; // 32 buttons bit stuffed into uint32_t
-	uint16_t axis[8]; // 8 analogs stored in uint16_t
-} __packed CustomJoystickReport_t;
 
 /* Symmantic report layout
 Joystick (Application)
@@ -60,6 +54,12 @@ Joystick (Application)
 		0x81, 0x02,																		/*    Input (variable,absolute) */                \
 		0xC0,																			/*  End Collection */                             \
 		MACRO_ARGUMENT_2_TO_END(__VA_ARGS__) 0xC0
+
+typedef struct
+{
+	uint32_t buttons; // 32 buttons bit stuffed into uint32_t
+	uint16_t axis[8]; // 8 analogs stored in uint16_t
+} __packed CustomJoystickReport_t;
 
 extern const HIDReportDescriptor *hidReportCustomJoystick;
 #define HID_CUSTOM_JOYSTICK hidReportCustomJoystick

@@ -1,12 +1,9 @@
-#include "USBComposite.h"
 #include "HIDCustomJoystick.h"
 
-// This code requires gcc on low-endian devices.
-
 //================================================================================
+// CustomJoystick:: (8 Axis 10-bit, 32 Button)
+// Based on the joystick.cpp HIDJoystick::
 //================================================================================
-//	Joystick
-
 void HIDCustomJoystick::begin(void)
 {
 }
@@ -54,8 +51,16 @@ void HIDCustomJoystick::buttons(uint32_t b)
     safeSendReport();
 }
 
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 void HIDCustomJoystick::axis(uint8_t analog, uint32_t val)
 {
+    val = MIN(val,1023);    // Clamp to max range
+    val = MAX(0,val);       // Clamp to min range
     joyReport.axis[analog] = val;
     safeSendReport();
 }
