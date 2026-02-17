@@ -1,3 +1,4 @@
+#include <Arduino.h>
 // ================================================================
 // Arduino Library - USB Device Driver https://github.com/arpruss/USBComposite_stm32f1
 // ================================================================
