@@ -12,6 +12,7 @@
 
 USBHID HID;
 HIDCustomJoystick CustomJoystick(HID);
+USBCompositeSerial CompositeSerial;
 
 // ================================================================
 // Board Inputs
@@ -70,6 +71,7 @@ void setup()
 
 void loop()
 {
+    DcsBios::loop();
     bool changed = false;
 
     // 1. Process Analog with Change Detection
