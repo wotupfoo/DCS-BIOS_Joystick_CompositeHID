@@ -21,7 +21,7 @@ Joystick (Application)
 	  ├─ Slider1
 	  └─ Slider2
 */
-// 8 AXIS inputs packed into 16 bits using full range 0..65535
+// 8 AXIS inputs packed into 16 bits using 10-bit range 0..1023
 // It is easier to setup the report if it's byte aligned.
 #define HID_CUSTOM_JOYSTICK_REPORT_DESCRIPTOR(...)                                                                                        \
 	0x05, 0x01,																			/*  Usage Page (Generic Desktop) */               \
@@ -48,7 +48,7 @@ Joystick (Application)
 		0x09, 0x36,																		/*    Usage (Slider) */                           \
 		0x09, 0x36,																		/*    Usage (Slider) */                           \
 		0x15, 0x00,																		/*    Logical Minimum (0) */                      \
-		0x26, 0xFF, 0xFF,																/*    Logical Maximum (65535) */                   \
+		0x26, 0xFF, 0x03,																/*    Logical Maximum (1023) */                   \
 		0x75, 0x10,																		/*    Report Size (16) */                         \
 		0x95, 0x08,																		/*    Report Count (8) 8 analog in uint16_t[8] */ \
 		0x81, 0x02,																		/*    Input (variable,absolute) */                \

@@ -20,6 +20,7 @@ const uint8 reportDescription[] = {
 USBHID HID;
 HIDCustomJoystick CustomJoystick(HID);
 CustomJoystickReport_t report, lastReport;
+USBCompositeSerial CompositeSerial;
 
 // ================================================================
 // Board Inputs
@@ -47,11 +48,11 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 #include <DcsBios.h> // DCS World BIOS Class Rx/Tx over Serial (DcsBios::)
 
 // DH-89 Mosquito Throttle Quadrant
-DcsBios::Potentiometer throttleControlL("THROTTLE_CONTROL_L", analogPins[0], input_max=65535);
-DcsBios::Potentiometer throttleControlR("THROTTLE_CONTROL_R", analogPins[1], input_max=65535);
+DcsBios::Potentiometer throttleControlL("THROTTLE_CONTROL_L", analogPins[0], true); // reverse=true sensor is backwards
+DcsBios::Potentiometer throttleControlR("THROTTLE_CONTROL_R", analogPins[1]);
 
-DcsBios::Potentiometer propControlL("PROP_CONTROL_L", analogPins[2], input_max=65535);
-DcsBios::Potentiometer propControlR("PROP_CONTROL_R", analogPins[3], input_max=65535);
+DcsBios::Potentiometer propControlL("PROP_CONTROL_L", analogPins[2], true); // reverse=true sensor is backwards
+DcsBios::Potentiometer propControlR("PROP_CONTROL_R", analogPins[3]);
 
 DcsBios::AnalogMultiPos mixture("MIXTURE", analogPins[4], 1);   // Hall Sensor (Analog) -> Digital
 

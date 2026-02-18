@@ -47,12 +47,12 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 #define DCSBIOS_DISABLE_SERVO
 #include <DcsBios.h> // DCS World BIOS Class Rx/Tx over Serial (DcsBios::)
 
-
-// ================================================================
-// ADD YOUR DCS-BIOS DEVICES HERE
-// ================================================================
-// e.g. 
-// DcsBios::Potentiometer throttleControlL("THROTTLE_CONTROL_L", analogPins[0], input_max=65535);
+// DH-89 Mosquito Stick
+DcsBios::Switch2Pos stickBtnA("STICK_BTN_A", digitalPins[0]);       // Machine Gun Trigger
+DcsBios::Switch2Pos stickBtnB1("STICK_BTN_B1", digitalPins[1]);     // Cannon Trigger
+DcsBios::Switch2Pos stickBtnB2("STICK_BTN_B2", digitalPins[2]);     // Ordinance Trigger (Bombs, Drop tanks)
+DcsBios::Switch2Pos stickWhBrkLock("STICK_WH_BRK_LOCK", digitalPins[3]);    // Wheel brake lock
+DcsBios::Potentiometer stickWhBrk("STICK_WH_BRK", analogPins[0]);           // Wheel brake lever
 
 void setup() {
     // MIDDLEWARE SETUP
