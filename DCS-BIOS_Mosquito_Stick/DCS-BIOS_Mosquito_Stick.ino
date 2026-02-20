@@ -44,15 +44,20 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 // A ZIP file of this repo is installed into the Arduino IDE instead of the original from DCS-Skunkworks
 // https://github.com/wotupfoo/dcs-bios-arduino-library forked from DCS-Skunkworks/dcs-bios-arduino-library
 #define DCSBIOS_USBCOMPOSITE_STM32F1_SERIAL // NEW: Functionality added into WotUpFoo fork in src/DcsBios.h
-#define DCSBIOS_DISABLE_SERVO
+//#define DCSBIOS_DISABLE_SERVO
 #include <DcsBios.h> // DCS World BIOS Class Rx/Tx over Serial (DcsBios::)
+
+// Flight controls are only sent/received over the Joystick HID device
+// analogPins[0] Stick Pitch
+// analogPins[1] Stick Roll
+// analogPins[2] Rudder Yaw
 
 // DH-89 Mosquito Stick
 DcsBios::Switch2Pos stickBtnA("STICK_BTN_A", digitalPins[0]);       // Machine Gun Trigger
 DcsBios::Switch2Pos stickBtnB1("STICK_BTN_B1", digitalPins[1]);     // Cannon Trigger
 DcsBios::Switch2Pos stickBtnB2("STICK_BTN_B2", digitalPins[2]);     // Ordinance Trigger (Bombs, Drop tanks)
 DcsBios::Switch2Pos stickWhBrkLock("STICK_WH_BRK_LOCK", digitalPins[3]);    // Wheel brake lock
-DcsBios::Potentiometer stickWhBrk("STICK_WH_BRK", analogPins[0]);           // Wheel brake lever
+DcsBios::Potentiometer stickWhBrk("STICK_WH_BRK", analogPins[3]);           // Wheel brake lever
 
 void setup() {
     // MIDDLEWARE SETUP
