@@ -1,6 +1,7 @@
 #include <Arduino.h>
 // ================================================================
-// Arduino Library - USB Device Driver https://github.com/arpruss/USBComposite_stm32f1
+// Arduino Library - USB Device Driver 
+// https://github.com/arpruss/USBComposite_stm32f1
 // ================================================================
 // Load the USB Composite driver that includes the USB Classes including:
 // HID - Keyboard, Mouse, Joystick, Gamepad
