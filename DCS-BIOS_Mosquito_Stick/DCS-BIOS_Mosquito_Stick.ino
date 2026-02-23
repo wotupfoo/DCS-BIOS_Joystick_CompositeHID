@@ -1,6 +1,14 @@
 #include <Arduino.h>
+
+// Input edge and debounce library
+// https://github.com/WotUpFoo/EdgeLogic
+// 1 input -> Button[n+0,1,2] = [debounce (level), inverted debounce (level), rise (pulse), fall (pulse)]
+// We will map each digital input to 4 buttons, [debounced,inverteddebounced,rising,falling]
+#include <EdgeLogic.h>
+
 // ================================================================
-// Arduino Library - USB Device Driver https://github.com/arpruss/USBComposite_stm32f1
+// Arduino Library - USB Device Driver 
+// https://github.com/arpruss/USBComposite_stm32f1
 // ================================================================
 // Load the USB Composite driver that includes the USB Classes including:
 // HID - Keyboard, Mouse, Joystick, Gamepad
@@ -35,6 +43,9 @@ const int deadband = 4; // Ignore changes smaller than this to suppress noise fl
 // Digital Inputs
 const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15}; // ACTIVE = LOW
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
+#if (digitalPinCount > 8)   // The custom Joystick report has 32 buttons. 4 per input are needed -> 8 input max
+#error Too many digital input pins. Limit of 8 digitalPins to drive 32 joystick buttons (4 per digital input)
+#endif
 
 // ================================================================
 // Middleware - DCS-BIOS, MobiFligt, SimTool etc
@@ -44,9 +55,11 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 // A ZIP file of this repo is installed into the Arduino IDE instead of the original from DCS-Skunkworks
 // https://github.com/wotupfoo/dcs-bios-arduino-library forked from DCS-Skunkworks/dcs-bios-arduino-library
 #define DCSBIOS_USBCOMPOSITE_STM32F1_SERIAL // NEW: Functionality added into WotUpFoo fork in src/DcsBios.h
-//#define DCSBIOS_DISABLE_SERVO
 #include <DcsBios.h> // DCS World BIOS Class Rx/Tx over Serial (DcsBios::)
 
+// ================================================================
+// ADD YOUR DCS-BIOS DEVICES HERE
+// ================================================================
 // Flight controls are only sent/received over the Joystick HID device
 // analogPins[0] Stick Pitch
 // analogPins[1] Stick Roll
@@ -58,6 +71,8 @@ DcsBios::Switch2Pos stickBtnB1("STICK_BTN_B1", digitalPins[1]);     // Cannon Tr
 DcsBios::Switch2Pos stickBtnB2("STICK_BTN_B2", digitalPins[2]);     // Ordinance Trigger (Bombs, Drop tanks)
 DcsBios::Switch2Pos stickWhBrkLock("STICK_WH_BRK_LOCK", digitalPins[3]);    // Wheel brake lock
 DcsBios::Potentiometer stickWhBrk("STICK_WH_BRK", analogPins[3]);           // Wheel brake lever
+
+EdgeLogicPins elp[digitalPinCount];
 
 void setup() {
     // MIDDLEWARE SETUP
@@ -76,7 +91,7 @@ void setup() {
     }
     for (int i = 0; i < digitalPinCount; i++)
     {
-        pinMode(digitalPins[i], INPUT_PULLUP);
+        elp[i] = EdgeLogicPins(i,INPUT_PULLUP);
     }
 }
 
@@ -103,10 +118,14 @@ void loop()
     // 2. Process Buttons with Change Detection
     for (int i = 0; i < digitalPinCount; i++)
     {
-        if (digitalRead(digitalPins[i]) == LOW)
-        {
-            CustomJoystick.button(i + 1, 1); // Buttons are 1..32 so use i+1
-        }
+        elp[i].loop(); // Update Logic
+        EdgeLogicPins::outputstates_t outputstates = elp->getOutputState();
+        int currentbuttongroup = i*4;     // Debounced + InvertedDebounced + HighPulse + LowPulse = 4
+        // Buttons are 1..32 so use "1 +" in front of the current button
+        CustomJoystick.button(1 + currentbuttongroup + 0, outputstates.Debounced);
+        CustomJoystick.button(1 + currentbuttongroup + 1, outputstates.InvertedDebounced);
+        CustomJoystick.button(1 + currentbuttongroup + 2, outputstates.HighPulse);
+        CustomJoystick.button(1 + currentbuttongroup + 3, outputstates.LowPulse);
     }
     if (report.buttons != lastReport.buttons)
         changed = true;

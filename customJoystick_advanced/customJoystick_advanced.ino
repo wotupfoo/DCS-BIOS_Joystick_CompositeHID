@@ -1,12 +1,14 @@
 #include <Arduino.h>
 
 // Input edge and debounce library
-// 1 input -> Button[n+0,1,2] = [debounce (level), rise (pulse), fall (pulse)]
-// We will map each digital input to 3 buttons, [debounced,rising,falling]
+// https://github.com/WotUpFoo/EdgeLogic
+// 1 input -> Button[n+0,1,2] = [debounce (level), inverted debounce (level), rise (pulse), fall (pulse)]
+// We will map each digital input to 4 buttons, [debounced,inverteddebounced,rising,falling]
 #include <EdgeLogic.h>
 
 // ================================================================
-// Arduino Library - USB Device Driver https://github.com/arpruss/USBComposite_stm32f1
+// Arduino Library - USB Device Driver 
+// https://github.com/arpruss/USBComposite_stm32f1
 // ================================================================
 // Load the USB Composite driver that includes the USB Classes including:
 // HID - Keyboard, Mouse, Joystick, Gamepad
@@ -41,6 +43,9 @@ const int deadband = 4; // Ignore changes smaller than this to suppress noise fl
 // Digital Inputs
 const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15}; // ACTIVE = LOW
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
+#if (digitalPinCount > 8)   // The custom Joystick report has 32 buttons. 4 per input are needed -> 8 input max
+#error Too many digital input pins. Limit of 8 digitalPins to drive 32 joystick buttons (4 per digital input)
+#endif
 
 EdgeLogicPins elp[digitalPinCount];
 
@@ -84,15 +89,22 @@ void loop()
         }
     }
 
-    // 2. Process Buttons with Change Detection
+    // 2. Process Buttons with Debounce and Change Detection
+    // Each input pin drives 4 joystick buttons:
+    //  Debounced
+    //  Inverted Debounced (handy if the switch is electrically backwards)
+    //  Debounced Rising Edge pulse ("ON" pulse)
+    //  Debounced Falling Edge pulse ("OFF" pulse)
     for (int i = 0; i < digitalPinCount; i++)
     {
-        elp[i].loop();              // Update Logic
-        int currentbutton = i*3;    // Debounce + HIGH + LOW = 3
+        elp[i].loop(); // Update Logic
+        EdgeLogicPins::outputstates_t outputstates = elp->getOutputState();
+        int currentbuttongroup = i*4;     // Debounced + InvertedDebounced + HighPulse + LowPulse = 4
         // Buttons are 1..32 so use "1 +" in front of the current button
-        CustomJoystick.button(1 + currentbutton + 0, elp[i].read());   // Debounce
-        CustomJoystick.button(1 + currentbutton + 1, elp[i].rose());   // HIGH pulse
-        CustomJoystick.button(1 + currentbutton + 2, elp[i].fell());   // LOW pulse
+        CustomJoystick.button(1 + currentbuttongroup + 0, outputstates.Debounced);
+        CustomJoystick.button(1 + currentbuttongroup + 1, outputstates.InvertedDebounced);
+        CustomJoystick.button(1 + currentbuttongroup + 2, outputstates.HighPulse);
+        CustomJoystick.button(1 + currentbuttongroup + 3, outputstates.LowPulse);
     }
     if (report.buttons != lastReport.buttons)
         changed = true;
