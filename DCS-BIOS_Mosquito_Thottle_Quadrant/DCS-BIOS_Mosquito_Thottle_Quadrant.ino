@@ -55,7 +55,6 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 // A ZIP file of this repo is installed into the Arduino IDE instead of the original from DCS-Skunkworks
 // https://github.com/wotupfoo/dcs-bios-arduino-library forked from DCS-Skunkworks/dcs-bios-arduino-library
 #define DCSBIOS_USBCOMPOSITE_STM32F1_SERIAL // NEW: Functionality added into WotUpFoo fork in src/DcsBios.h
-#define DCSBIOS_DISABLE_SERVO
 #include <DcsBios.h> // DCS World BIOS Class Rx/Tx over Serial (DcsBios::)
 
 // DH-89 Mosquito Throttle Quadrant
