@@ -3,10 +3,14 @@
 
 USBHID HID;
 HIDCustomJoystick joy(HID);      // must pass HID here
+const HIDReportDescriptor jRD = {
+  joystickReportDescriptor,         // report descriptor buffer
+  sizeof(joystickReportDescriptor)  // report descriptor size
+};
+USBCompositeSerial CompositeSerial;
 
 void setup() {
-  HID.registerComponent();
-  joy.begin();
+  HID.begin(CompositeSerial, &jRD);
   USBComposite.begin();
   while (!USBComposite) { }
 }
@@ -32,7 +36,8 @@ void loop() {
   joy.axis(5, 1023);
   joy.axis(6, 1023);
   joy.axis(7, 1023);
-  joy.send(); 
+  joy.send();
+  CompositeSerial.println("I work!");
   delay(500);
 }
 

@@ -44,6 +44,7 @@ HID_COLLECTION, HID_COLLECTION_APPLICATION,
 
 HID_END_COLLECTION
 };
+extern const HIDReportDescriptor jRD;
 
 typedef struct __attribute__((packed, aligned(1))) {
   uint8_t  reportID;
@@ -63,11 +64,6 @@ typedef struct __attribute__((packed, aligned(1))) {
   };
 } JoyReport_t;
 
-const HIDReportDescriptor jRD = {
-  joystickReportDescriptor,         // report descriptor buffer
-  sizeof(joystickReportDescriptor)  // report descriptor size
-};
-
 //================================================================================
 //================================================================================
 //	Custom Joystick Class wrapper of HIDReporter
@@ -81,7 +77,7 @@ public:
   HIDCustomJoystick(USBHID& HID, uint8_t reportID = HID_JOYSTICK_REPORT_ID)
     : HIDReporter(HID, &jRD, (uint8_t*)&joyReport, sizeof(joyReport), reportID) {
       joyReport.buttons = 0;
-      for (uint8_t i = 0; i < (uint8_t)8; i++)
+      for (uint8_t i = 0; i < (uint8_t)6; i++)
         joyReport.axes[i] = 0;
     }
 
