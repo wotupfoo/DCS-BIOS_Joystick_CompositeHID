@@ -1,99 +1,44 @@
-#include <Arduino.h>
-// ================================================================
-// Arduino Library - USB Device Driver 
-// https://github.com/arpruss/USBComposite_stm32f1
-// ================================================================
-// Load the USB Composite driver that includes the USB Classes including:
-// HID - Keyboard, Mouse, Joystick, Gamepad
-// CDC - Virtual Communications Port
-// Mass Storage Devivce, MIDI, Audio, Xbox360|XboxOne
 #include <USBComposite.h>
-
-// Custom Joystick layout - 32 buttons, 8 axis (10bit range, 16bit packing)
 #include "HIDCustomJoystick.h"
 
-// The first endpoint will be the CompositeSerial followed by whatever is 
-// put in this array. Currently only a single custom configured joystick
-const uint8 reportDescription[] = {
-  HID_CUSTOM_JOYSTICK_REPORT_DESCRIPTOR()
-};
-
 USBHID HID;
-HIDCustomJoystick CustomJoystick(HID);
-CustomJoystickReport_t report, lastReport;
-
-// ================================================================
-// Board Inputs
-// ================================================================
-// Analog Inputs
-const int analogPins[] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7};
-const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
-float filteredValues[analogPinCount];
-const float alpha = 0.15;
-const int deadband = 4; // Ignore changes smaller than this to suppress noise floors
-
-// Digital Inputs
-const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15}; // ACTIVE = LOW
-const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
+HIDCustomJoystick joy(HID);      // must pass HID here
+const HIDReportDescriptor jRD = {
+  joystickReportDescriptor,         // report descriptor buffer
+  sizeof(joystickReportDescriptor)  // report descriptor size
+};
+USBCompositeSerial CompositeSerial;
 
 void setup() {
-    // MIDDLEWARE SETUP
-    // Create a Serial port and whatever is in the reportDescrition
-    HID.begin(CompositeSerial, reportDescription, sizeof(reportDescription));
-    USBComposite.begin();  
-    while (!USBComposite);
-
-    CustomJoystick.setManualReportMode(true);
-
-    // HARDWARE SETUP
-    for (int i = 0; i < analogPinCount; i++)
-    {
-        pinMode(analogPins[i], INPUT_ANALOG);
-        filteredValues[i] = analogRead(analogPins[i]);
-    }
-    for (int i = 0; i < digitalPinCount; i++)
-    {
-        pinMode(digitalPins[i], INPUT_PULLUP);
-    }
+  HID.begin(CompositeSerial, &jRD);
+  USBComposite.begin();
+  while (!USBComposite) { }
 }
 
-void loop()
-{
-    bool changed = false;
-
-    // 1. Process Analog with Change Detection
-    for (int i = 0; i < analogPinCount; i++)
-    {
-        int raw = analogRead(analogPins[i]);
-        filteredValues[i] = (alpha * raw) + ((1.0 - alpha) * filteredValues[i]);
-        uint16_t currentVal = (uint16_t)filteredValues[i];
-
-        // Only change if it exceeds the noise deadband
-        if (abs((int)currentVal - (int)lastReport.axis[i]) > deadband)
-        {
-            CustomJoystick.axis(i, currentVal);
-            changed = true;
-        }
-    }
-
-    // 2. Process Buttons with Change Detection
-    for (int i = 0; i < digitalPinCount; i++)
-    {
-        if (digitalRead(digitalPins[i]) == LOW)
-        {
-            CustomJoystick.button(i + 1, 1); // Buttons are 1..32 so use i+1
-        }
-    }
-    if (report.buttons != lastReport.buttons)
-        changed = true;
-
-    // 3. Conditional Send
-    if (changed)
-    {
-        CustomJoystick.send();
-        lastReport.buttons = report.buttons;
-        memcpy(lastReport.axis, report.axis, sizeof(report.axis)); // Sync
-    }
-
-    delay(5); // Fast polling, but 'changed' logic prevents USB flooding
+void loop() {
+  joy.buttons(1 | 2);
+  joy.axis(0, 0);
+  joy.axis(1, 0);
+  joy.axis(2, 0);
+  joy.axis(3, 0);
+  joy.axis(4, 0);
+  joy.axis(5, 0);
+  joy.axis(6, 0);
+  joy.axis(7, 0);
+  joy.send(); 
+  delay(500);
+  joy.buttons(0);
+  joy.axis(0, 1023);
+  joy.axis(1, 1023);
+  joy.axis(2, 1023);
+  joy.axis(3, 1023);
+  joy.axis(4, 1023);
+  joy.axis(5, 1023);
+  joy.axis(6, 1023);
+  joy.axis(7, 1023);
+  joy.send();
+  CompositeSerial.println("I am a customJoystick and Composite Serial device using OpenComposite_STM32F1 library and Arudino!");
+  CompositeSerial.println("I show up at a Joystick device (see joy.cpl Windows Control Panel app) and open a serial terminal on the COM port to see!");
+  delay(500);
 }
+

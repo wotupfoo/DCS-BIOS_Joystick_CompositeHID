@@ -1,5 +1,4 @@
 #include "HIDCustomJoystick.h"
-
 //================================================================================
 // CustomJoystick:: (8 Axis 10-bit, 32 Button)
 // Based on the joystick.cpp HIDJoystick::
@@ -57,10 +56,10 @@ void HIDCustomJoystick::buttons(uint32_t b)
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
-void HIDCustomJoystick::axis(uint8_t analog, uint32_t val)
+void HIDCustomJoystick::axis(uint8_t analog, uint16_t val)
 {
     val = MIN(val,1023);    // Clamp to max range
-    val = MAX(0,val);       // Clamp to min range
-    joyReport.axis[analog] = val;
+//ALREADY UNSIGNED    val = MAX(0,val);       // Clamp to min range
+    joyReport.axes[analog] = val;
     safeSendReport();
 }
