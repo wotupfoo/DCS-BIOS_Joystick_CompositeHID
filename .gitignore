@@ -68,6 +68,7 @@ desktop.ini
 *.bak
 *.swp
 *~
+~$*
 
 #########################################################
 # Python / tooling (if scripts used)
