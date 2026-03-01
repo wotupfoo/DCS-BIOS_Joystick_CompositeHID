@@ -5,9 +5,6 @@
 //================================================================================
 void HIDCustomJoystick::begin(void)
 {
-    joyReport.buttons = 0;
-    for (uint8_t i = 0; i < (uint8_t)6; i++)
-      joyReport.axes[i] = 0;
 }
 
 void HIDCustomJoystick::end(void)

@@ -29,7 +29,7 @@ HID_COLLECTION, HID_COLLECTION_APPLICATION,
   HID_LOGICAL_MIN, 0x00,
   HID_LOGICAL_MAX_16, 0xFF, 0x03,              // 0..1023 in a 16-bit field
   HID_REPORT_SIZE, 0x10,
-  HID_REPORT_COUNT, 0x06,
+  HID_REPORT_COUNT, 0x08,
 
     HID_USAGE, HID_GD_X,
     HID_USAGE, HID_GD_Y,
@@ -37,17 +37,6 @@ HID_COLLECTION, HID_COLLECTION_APPLICATION,
     HID_USAGE, HID_GD_RX,
     HID_USAGE, HID_GD_RY,
     HID_USAGE, HID_GD_RZ,
-
-  HID_INPUT, HID_INPUT_DATA_VAR_ABS,
-
-  // -------------------------
-  // 2 Sliders (16-bit each)
-  // -------------------------
-  HID_LOGICAL_MIN, 0x00,
-  HID_LOGICAL_MAX_16, 0xFF, 0x03,
-  HID_REPORT_SIZE, 0x10,
-  HID_REPORT_COUNT, 0x02,
-
     HID_USAGE, HID_GD_SLIDER,
     HID_USAGE, HID_GD_DIAL,
 
@@ -60,7 +49,7 @@ typedef struct __attribute__((packed, aligned(1))) {
   uint8_t  reportID;
   uint32_t buttons;
   union {
-    uint16_t axes[6];
+    uint16_t axes[8];
     struct {
       uint16_t x;
       uint16_t y;
@@ -68,14 +57,9 @@ typedef struct __attribute__((packed, aligned(1))) {
       uint16_t rx;
       uint16_t ry;
       uint16_t rz;
-    } stick;
-  };
-  union {
-    uint16_t non_sticks[2];
-    struct {
       uint16_t slider;
       uint16_t dial;
-    } non_stick;
+    } stick;
   };
 } JoyReport_t;
 
@@ -95,7 +79,11 @@ class HIDCustomJoystick : public HIDReporter
 public:
   // Constructor
   HIDCustomJoystick(USBHID& HID, uint8_t reportID = HID_JOYSTICK_REPORT_ID)
-    : HIDReporter(HID, &jRD, (uint8_t*)&joyReport, sizeof(joyReport), reportID) {}
+    : HIDReporter(HID, &jRD, (uint8_t*)&joyReport, sizeof(joyReport), reportID) {
+      joyReport.buttons = 0;
+      for (uint8_t i = 0; i < (uint8_t)8; i++)
+        joyReport.axes[i] = 0;
+    }
 
   inline void send(void)
   {

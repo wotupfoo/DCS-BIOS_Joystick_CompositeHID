@@ -19,6 +19,8 @@ void loop() {
   joy.axis(3, 0);
   joy.axis(4, 0);
   joy.axis(5, 0);
+  joy.axis(6, 0);
+  joy.axis(7, 0);
   joy.send(); 
   delay(500);
   joy.buttons(0);
@@ -28,6 +30,8 @@ void loop() {
   joy.axis(3, 1023);
   joy.axis(4, 1023);
   joy.axis(5, 1023);
+  joy.axis(6, 1023);
+  joy.axis(7, 1023);
   joy.send(); 
   delay(500);
 }
