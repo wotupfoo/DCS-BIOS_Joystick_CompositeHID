@@ -1,6 +1,9 @@
+#include <STM32ADC.h>
 #include <USBComposite.h>
 #include "HIDCustomJoystick.h"
+#include <string.h>
 
+STM32ADC adc(ADC1);
 USBHID HID;
 HIDCustomJoystick joy(HID); // must pass HID here
 const HIDReportDescriptor jRD = {
@@ -69,9 +72,9 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 uint16_t axis_raw_min[analogPinCount];
 uint16_t axis_raw_max[analogPinCount];
 
-
 void setup()
 {
+    // MIDDLEWARE SETUP
     HID.begin(CompositeSerial, &jRD);
     USBComposite.begin();
     while (!USBComposite)
@@ -80,8 +83,13 @@ void setup()
 
     joy.setManualReportMode(true);
 
+    delay(3000);    // Let the ADC warm up to not get bogus numbers
     // HARDWARE SETUP
-    delay(200); // Give the ADC time to settle.
+    // Attempting to smooth out noise on the ADC
+    adc.calibrate();
+    adc.setSampleRate(ADC_SMPR_239_5);  // Slow the ADC sampler charge ciruit to 239.5 cycles
+
+
     for (int i = 0; i < analogPinCount; i++)
     {
         pinMode(analogPins[i], INPUT_ANALOG);
@@ -91,11 +99,15 @@ void setup()
         axis_raw_max[i] = raw+1;
     }
     CompositeSerial.println("Starting");
+    CompositeSerial.println("Vcc,Vhall,Percent");
 }
 
 const unsigned long loop_interval_hz = 100;  // Plenty for joystick, might not be for DCS-BIOS updates.
 const unsigned long loop_interval_ms = (long)(1000/loop_interval_hz);
 unsigned long previousMillis = 0;
+
+const float Vref = 3.3;
+const float Vstep = Vref/4096.0;
 
 void loop()
 {
@@ -106,46 +118,75 @@ void loop()
         previousMillis = currentMillis;
 
         bool changed = false;
-        // 1. Process Analog with Change Detection
-//        CompositeSerial.print("hh:mm:ss:");
-//        CompositeSerial.print(currentMillis%100);
-//        CompositeSerial.print(" ");
+
+#if 0
+        //Not properly implemented in the library. Stub code is adc_read()*1.1
+        float Vcc_adc = adc.readVcc();
+        float Vcc_ratio = 3300.0/Vcc_adc;
+        float Vcc = Vcc_adc / 1000.0;
+
+        CompositeSerial.print("Vcc_adc=");
+        CompositeSerial.print(Vcc_adc,0);
+//        CompositeSerial.print(",");
+
+        CompositeSerial.print(" Vcc_ratio=");
+        CompositeSerial.print(Vcc_ratio);
+//        CompositeSerial.print(",");
+
+        CompositeSerial.print(" Vcc=");
+        CompositeSerial.print(Vcc);
+//        CompositeSerial.print(",");
+#endif
+
+// 1. Process Analog with Change Detection
         for (int i = 0; i < analogPinCount; i++)
         {
-            int raw = analogRead(analogPins[i]);
             // X-AXIS = RUDDER
+            int raw = analogRead(analogPins[i]);
+            // Center on 2.5v = 2048 so that it's in the middle of the hall sensor range
+            // 3113 is measured value with 2.5v adc input, 5v Vcc on sensor
+            //raw = raw * 2048.0 / 3113.0;
             filteredValues[i] = (alpha * raw) + ((1.0 - alpha) * filteredValues[i]);
-            CompositeSerial.print("A");
-            CompositeSerial.print(i);
+            float Vhall = filteredValues[i];
+            //CompositeSerial.print(" Vadc=");
+            //CompositeSerial.print(filteredValues[i]);
+
+#if 1
+            //CompositeSerial.print(" ");
+            //CompositeSerial.print("A");
+            //CompositeSerial.print(i);
             uint16_t axis_filtered = (uint16_t)filteredValues[i];
 
             if(axis_filtered < axis_raw_min[i]) axis_raw_min[i] = axis_filtered;
             if(axis_filtered > axis_raw_max[i]) axis_raw_max[i] = axis_filtered;
 
-            CompositeSerial.print("[");
-            CompositeSerial.print(axis_raw_min[i]);
-            CompositeSerial.print("<");
-            CompositeSerial.print(filteredValues[i]);
-            CompositeSerial.print("<");
-            CompositeSerial.print(axis_raw_max[i]);
+            //CompositeSerial.print("[");
+            //CompositeSerial.print(axis_raw_min[i]);
+            //CompositeSerial.print("<");
+            //CompositeSerial.print(filteredValues[i]);
+            //CompositeSerial.print("<");
+            //CompositeSerial.print(axis_raw_max[i]);
+
             // Spread range over the whole 10 bits
             uint16_t axis_mapped = map(axis_filtered, axis_raw_min[i], axis_raw_max[i], 0, 1023);
+            //uint16_t axis_mapped = axis_filtered;
 
-            CompositeSerial.print("=");
-            CompositeSerial.print(axis_mapped);
-            CompositeSerial.print("]");
+            //CompositeSerial.print("=");
+            //CompositeSerial.print(axis_mapped);
+            //CompositeSerial.print("]");
 
             // Only change if it exceeds the noise deadband
             if (abs((int)axis_mapped - (int)lastReport.axes[i]) > mapped_deadband) {
-                CompositeSerial.print("*");
+                //CompositeSerial.print("*");
                 joy.axis(i, axis_mapped);
                 lastReport.axes[i] = axis_mapped;
                 changed = true;
             }
             else {
-                CompositeSerial.print(" ");
+                //CompositeSerial.print(" ");
             }
-            CompositeSerial.print("\t : ");
+            //CompositeSerial.print("\t : ");
+#endif
         }
         // 2. Process Digital
 
@@ -156,6 +197,6 @@ void loop()
             lastReport.buttons = report.buttons;
         }
 //        CompositeSerial.print("\r");
-        CompositeSerial.println();
+        //CompositeSerial.println();
     }
 }
