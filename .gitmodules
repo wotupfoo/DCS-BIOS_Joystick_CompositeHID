@@ -1,8 +1,8 @@
-[submodule "modules/dcs-bios-arduino-library"]
-	path = modules/dcs-bios-arduino-library
-	url = https://github.com/wotupfoo/dcs-bios-arduino-library.git
+# [submodule "modules/dcs-bios-arduino-library"]
+# 	path = modules/dcs-bios-arduino-library
+# 	url = https://github.com/wotupfoo/dcs-bios-arduino-library.git
 
-[submodule "modules/dcs-bios-arduino-easymode"]
-	path = modules/dcs-bios-arduino-easymode
-	url = https://github.com/wotupfoo/dcs-bios-arduino-easymode.git
+# [submodule "modules/dcs-bios-arduino-easymode"]
+# 	path = modules/dcs-bios-arduino-easymode
+# 	url = https://github.com/wotupfoo/dcs-bios-arduino-easymode.git
 
