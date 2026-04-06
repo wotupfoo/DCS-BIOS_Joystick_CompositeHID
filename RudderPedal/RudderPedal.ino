@@ -40,10 +40,7 @@ const uint8 ReservedPins[]={PA13, // JTAG_TMS/SWDIO
     PA4/ADC4, PA5/ADC5, PA6/ADC6, PA7/ADC7, 
     PB0/ADC8, PB1,ADC9
 */
-//const int analogPins[] = {PA0};
-const int analogPins[] = {PA2};
-//const int analogPins[] = {PA0, PA1, PA2};
-//const int analogPins[] = {  PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1};
+const int analogPins[] = {PA7};
 const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
 float filteredValues[analogPinCount];
 const float alpha = 0.5; // 0.15; Filter attack speed
@@ -67,11 +64,6 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 #endif
 */
 
-// Assuming 0..1023 output range
-#define AXIS_START_RANGE 10
-uint16_t axis_raw_min[analogPinCount];
-uint16_t axis_raw_max[analogPinCount];
-
 void setup()
 {
     // MIDDLEWARE SETUP
@@ -94,8 +86,6 @@ void setup()
         pinMode(analogPins[i], INPUT_ANALOG);
         uint16_t raw = analogRead(analogPins[i]);
         filteredValues[i] = raw;
-        axis_raw_min[i] = raw-1;
-        axis_raw_max[i] = raw+1;
     }
     CompositeSerial.println("Starting");
 }
@@ -120,10 +110,9 @@ void loop()
             // X-AXIS = RUDDER
             int raw = analogRead(analogPins[i]);
             filteredValues[i] = (alpha * raw) + ((1.0 - alpha) * filteredValues[i]);
-            float Vhall = filteredValues[i];
-
             uint16_t intFiltered = (uint16_t)filteredValues[i];
 
+            //uint16_t axis_mapped = intFiltered;     // 12bit
             // Windows joy.cpl seems to prefer 10bit (0..1023) vs 12bit (0..4095)
             uint16_t axis_mapped = intFiltered >> 2;  // 12bit to 10bit
             int delta = abs((int)axis_mapped - (int)lastReport.axes[i]);
