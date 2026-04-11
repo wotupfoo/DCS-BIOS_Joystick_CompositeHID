@@ -27,19 +27,22 @@ HID_COLLECTION, HID_COLLECTION_APPLICATION,
   // -------------------------
   HID_USAGE_PAGE, HID_USAGE_PAGE_GENERIC_DESKTOP,
   HID_LOGICAL_MIN, 0x00,
-  HID_LOGICAL_MAX_16, 0xFF, 0x03,              // 0..1023 in a 16-bit field
-  HID_REPORT_SIZE, 0x10,
-  HID_REPORT_COUNT, 0x08,
+  HID_LOGICAL_MAX_16, 0xFF, 0x03,     // 0..1023 10bits in a 16-bit field
+//  HID_LOGICAL_MAX_16, 0xFF, 0x0F,     // 0..4095 12bits in a 16-bit field
+  HID_REPORT_SIZE, 0x10,              // 16 bit packing
+//  HID_REPORT_COUNT, 0x08,             // 8 Axis
+//  HID_REPORT_COUNT, 0x03,             // 3 Axis
+  HID_REPORT_COUNT, 0x01,             // 1 Axis
 
-    HID_USAGE, HID_GD_X,
-    HID_USAGE, HID_GD_Y,
+//    HID_USAGE, HID_GD_X,
+//    HID_USAGE, HID_GD_Y,
     HID_USAGE, HID_GD_Z,
-    HID_USAGE, HID_GD_RX,
+/*    HID_USAGE, HID_GD_RX,
     HID_USAGE, HID_GD_RY,
     HID_USAGE, HID_GD_RZ,
     HID_USAGE, HID_GD_SLIDER,
     HID_USAGE, HID_GD_DIAL,
-
+*/
   HID_INPUT, HID_INPUT_DATA_VAR_ABS,
 
 HID_END_COLLECTION
@@ -50,16 +53,18 @@ typedef struct __attribute__((packed, aligned(1))) {
   uint8_t  reportID;
   uint32_t buttons;
   union {
-    uint16_t axes[8];
+//    uint16_t axes[8];
+//    uint16_t axes[3];
+    uint16_t axes[1];
     struct {
-      uint16_t x;
-      uint16_t y;
+//      uint16_t x;
+//      uint16_t y;
       uint16_t z;
-      uint16_t rx;
+/*      uint16_t rx;
       uint16_t ry;
       uint16_t rz;
       uint16_t slider;
-      uint16_t dial;
+      uint16_t dial;*/
     } stick;
   };
 } JoyReport_t;

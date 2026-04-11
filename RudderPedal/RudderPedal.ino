@@ -43,8 +43,8 @@ const uint8 ReservedPins[]={PA13, // JTAG_TMS/SWDIO
 const int analogPins[] = {PA7};
 const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
 float filteredValues[analogPinCount];
-const float alpha = 0.5; // 0.15; Filter attack speed
-const int mapped_deadband = 2; // Ignore changes smaller than this to suppress noise floors
+const float alpha = 0.25; // 0.15; Filter attack speed
+const int mapped_deadband = 3; // Ignore changes smaller than this to suppress noise floors
 
 /*
 // ================================================================
@@ -108,23 +108,32 @@ void loop()
         for (int i = 0; i < analogPinCount; i++)
         {
             // X-AXIS = RUDDER
-            int raw = analogRead(analogPins[i]);
+            const int raw_zero = 2048 + 30;
+            int raw = analogRead(analogPins[i]) - raw_zero;
             filteredValues[i] = (alpha * raw) + ((1.0 - alpha) * filteredValues[i]);
-            uint16_t intFiltered = (uint16_t)filteredValues[i];
+            int16_t intFiltered = (int16_t)filteredValues[i];
 
-            //uint16_t axis_mapped = intFiltered;     // 12bit
+            const int16_t axis_gain = 11;
+            int16_t axis = axis_gain*intFiltered;   // Amplify around the center
+            axis = max(-2048, axis);
+            axis = min(axis, 2047);
+            uint16_t axis_mapped = (uint16_t)(axis + 2048);   // Move to center (2048)
             // Windows joy.cpl seems to prefer 10bit (0..1023) vs 12bit (0..4095)
-            uint16_t axis_mapped = intFiltered >> 2;  // 12bit to 10bit
+            axis_mapped = axis_mapped >> 2; // 12bit to 10bit
             int delta = abs((int)axis_mapped - (int)lastReport.axes[i]);
 
             // Putting prints in the deadband test so it's no flooding the serial
-            CompositeSerial.print("A");
-            CompositeSerial.print(i);
-            CompositeSerial.print(" axis(");
+            CompositeSerial.print("raw=");
+            CompositeSerial.print(raw);
+            CompositeSerial.print(" filtered=");
+            CompositeSerial.print(intFiltered);
+            CompositeSerial.print(" axis=");
+            CompositeSerial.print(axis);
+            CompositeSerial.print(" axis_mapped=");
             CompositeSerial.print(axis_mapped);
-            CompositeSerial.print(")-last(");
+            CompositeSerial.print(" last");
             CompositeSerial.print((int)lastReport.axes[i]);
-            CompositeSerial.print(")=");
+            CompositeSerial.print(" delta=");
             CompositeSerial.print(delta);
             // Only change if it exceeds the noise deadband
             if (delta > mapped_deadband) {

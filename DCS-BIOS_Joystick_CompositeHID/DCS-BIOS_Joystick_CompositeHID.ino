@@ -1,11 +1,4 @@
 #include <Arduino.h>
-
-// Input edge and debounce library
-// https://github.com/WotUpFoo/EdgeLogic
-// 1 input -> Button[n+0,1,2] = [debounce (level), inverted debounce (level), rise (pulse), fall (pulse)]
-// We will map each digital input to 4 buttons, [debounced,inverteddebounced,rising,falling]
-#include <EdgeLogic.h>
-
 // ================================================================
 // Arduino Library - USB Device Driver 
 // https://github.com/arpruss/USBComposite_stm32f1
@@ -19,14 +12,13 @@
 // Custom Joystick layout - 32 buttons, 8 axis (10bit range, 16bit packing)
 #include "HIDCustomJoystick.h"
 
-// The first endpoint will be the CompositeSerial followed by whatever is 
-// put in this array. Currently only a single custom configured joystick
-const uint8 reportDescription[] = {
-  HID_CUSTOM_JOYSTICK_REPORT_DESCRIPTOR()
-};
-
 USBHID HID;
 HIDCustomJoystick CustomJoystick(HID);
+const HIDReportDescriptor jRD = {
+  joystickReportDescriptor,         // report descriptor buffer
+  sizeof(joystickReportDescriptor)  // report descriptor size
+};
+USBCompositeSerial CompositeSerial;
 CustomJoystickReport_t report, lastReport;
 USBCompositeSerial CompositeSerial;
 
@@ -63,14 +55,19 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 // e.g. 
 // DcsBios::Potentiometer throttleControlL("THROTTLE_CONTROL_L", analogPins[0], input_max=65535);
 
+// Input edge and debounce library
+// https://github.com/WotUpFoo/EdgeLogic
+// 1 input -> Button[n+0,1,2] = [debounce (level), inverted debounce (level), rise (pulse), fall (pulse)]
+// We will map each digital input to 4 buttons, [debounced,inverteddebounced,rising,falling]
+#include <EdgeLogic.h>
 EdgeLogicPins elp[digitalPinCount];
 
 void setup() {
     // MIDDLEWARE SETUP
     // Create a Serial port and whatever is in the reportDescrition
-    HID.begin(CompositeSerial, reportDescription, sizeof(reportDescription));
-    USBComposite.begin();  
-    while (!USBComposite);
+    HID.begin(CompositeSerial, &jRD);
+    USBComposite.begin();
+    while (!USBComposite) { }
 
     CustomJoystick.setManualReportMode(true);
 
