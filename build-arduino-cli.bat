@@ -30,7 +30,11 @@ echo Arduino CLI config: "%ARDUINO_CONFIG_FILE%"
 echo Workspace library: "%WORKSPACE_LIBRARY_ROOT%"
 echo Sketch build path: "%SKETCH_BUILD_PATH%"
 if defined ARDUINO_IDE_LIBRARIES echo Arduino IDE libraries: "%ARDUINO_IDE_LIBRARIES%"
-if defined ARDUINO_FQBN echo FQBN: %ARDUINO_FQBN%
+if defined ARDUINO_FQBN (
+    echo FQBN: %ARDUINO_FQBN%
+) else (
+    echo FQBN: sketch.yaml default_fqbn
+)
 
 if defined ARDUINO_IDE_LIBRARIES (
     if defined ARDUINO_FQBN (
@@ -45,7 +49,12 @@ if defined ARDUINO_IDE_LIBRARIES (
         "%ARDUINO_CLI%" --config-file "%ARDUINO_CONFIG_FILE%" compile --build-path "%SKETCH_BUILD_PATH%" %LIBRARY_ARG% --verbose "%~1"
     )
 )
+if errorlevel 1 goto :compile_failed
 goto :eof
+
+:compile_failed
+powershell -NoProfile -Command "Write-Host '========================================' -ForegroundColor Red; Write-Host 'COMPILE FAILED' -ForegroundColor Red; Write-Host '========================================' -ForegroundColor Red"
+exit /b 1
 
 :find_arduino_cli
 for %%P in (

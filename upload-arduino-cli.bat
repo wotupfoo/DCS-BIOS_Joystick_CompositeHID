@@ -28,7 +28,11 @@ echo Arduino CLI: "%ARDUINO_CLI%"
 echo Arduino CLI config: "%ARDUINO_CONFIG_FILE%"
 echo Sketch build path: "%SKETCH_BUILD_PATH%"
 if defined ARDUINO_IDE_LIBRARIES echo Arduino IDE libraries: "%ARDUINO_IDE_LIBRARIES%"
-if defined ARDUINO_FQBN echo FQBN: %ARDUINO_FQBN%
+if defined ARDUINO_FQBN (
+    echo FQBN: %ARDUINO_FQBN%
+) else (
+    echo FQBN: sketch.yaml default_fqbn
+)
 echo Uploading %1
 if defined ARDUINO_FQBN (
     "%ARDUINO_CLI%" --config-file "%ARDUINO_CONFIG_FILE%" upload --build-path "%SKETCH_BUILD_PATH%" --fqbn "%ARDUINO_FQBN%" --verbose "%~1"
