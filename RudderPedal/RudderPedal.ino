@@ -3,7 +3,7 @@
 #include "HIDCustomJoystick.h"
 #include <string.h>
 
-STM32ADC adc(ADC1);
+STM32ADC adc(ADC1); // direct hardware control of the ADC vs using the Arduino library
 USBHID HID;
 HIDCustomJoystick joy(HID); // must pass HID here
 const HIDReportDescriptor jRD = {

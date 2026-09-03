@@ -14,8 +14,9 @@
                                                    "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/cores/maple",
                                                    "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/variants/generic_stm32f103c",
                                                    "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/libraries/USBComposite",
-                                                   "G:/My Drive/EmbeddedElectronics/Arduino/libraries/DCS-BIOS/src",
+                                                   "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/libraries/STM32ADC",
                                                    "G:/My Drive/EmbeddedElectronics/Arduino/hardware/Arduino_STM32/STM32F1/libraries/Servo/src",
+                                                   "G:/My Drive/EmbeddedElectronics/Arduino/libraries/DCS-BIOS/src",
                                                    "G:/My Drive/EmbeddedElectronics/Arduino/libraries/EdgeLogic/src"
                                                ],
                                "defines":  [
