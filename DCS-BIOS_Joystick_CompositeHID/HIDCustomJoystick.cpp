@@ -60,6 +60,6 @@ void HIDCustomJoystick::axis(uint8_t analog, uint16_t val)
 {
     val = MIN(val,1023);    // Clamp to max range
 //ALREADY UNSIGNED    val = MAX(0,val);       // Clamp to min range
-    joyReport.axes[analog] = val;
+    joyReport.axis[analog] = val;
     safeSendReport();
 }

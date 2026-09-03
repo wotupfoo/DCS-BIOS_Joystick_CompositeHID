@@ -7,6 +7,10 @@
     4 rotary encoders using pb0..7 sending up and down button press on joystick1
     2 buttons using portC on joystick2 all remaining digital
 */
+
+/* Some errors in the generated code. Joystick2 isn't instantiated, and the rotary encoders 
+are not fully implemented. Here's a corrected version:*/
+
 #include <USBComposite.h>
 #include <RotaryEncoder.h>
 
@@ -33,7 +37,13 @@ void checkEnc3() { encoders[3]->tick(); }
 void (*isrFuncs[])() = {checkEnc0, checkEnc1, checkEnc2, checkEnc3};
 
 void setup() {
-  HID.begin(HID_JOYSTICK); 
+  HID.begin(HID_JOYSTICK);
+  HID.registerComponent(Joystick1);
+  HID.registerComponent(Joystick2);
+
+  while (!USBComposite);
+  Joystick1.setManualReportMode(true);
+  Joystick2.setManualReportMode(true);
 
   // Setup Analog Axes (PA0-PA9)
   for (int i = 0; i <= 9; i++) pinMode(PA0 + i, INPUT_ANALOG);

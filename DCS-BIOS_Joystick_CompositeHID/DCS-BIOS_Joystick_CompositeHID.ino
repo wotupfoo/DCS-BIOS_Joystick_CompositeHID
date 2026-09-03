@@ -1,4 +1,11 @@
 #include <Arduino.h>
+
+// Input edge and debounce library
+// https://github.com/WotUpFoo/EdgeLogic
+// 1 input -> Button[n+0,1,2] = [debounce (level), inverted debounce (level), rise (pulse), fall (pulse)]
+// We will map each digital input to 4 buttons, [debounced,inverteddebounced,rising,falling]
+#include <EdgeLogic.h>
+
 // ================================================================
 // Arduino Library - USB Device Driver 
 // https://github.com/arpruss/USBComposite_stm32f1
@@ -19,8 +26,8 @@ const HIDReportDescriptor jRD = {
   sizeof(joystickReportDescriptor)  // report descriptor size
 };
 USBCompositeSerial CompositeSerial;
-CustomJoystickReport_t report, lastReport;
-USBCompositeSerial CompositeSerial;
+JoyReport_t report, lastReport;
+
 
 // ================================================================
 // Board Inputs
@@ -55,11 +62,10 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 // e.g. 
 // DcsBios::Potentiometer throttleControlL("THROTTLE_CONTROL_L", analogPins[0], input_max=65535);
 
-// Input edge and debounce library
-// https://github.com/WotUpFoo/EdgeLogic
-// 1 input -> Button[n+0,1,2] = [debounce (level), inverted debounce (level), rise (pulse), fall (pulse)]
-// We will map each digital input to 4 buttons, [debounced,inverteddebounced,rising,falling]
-#include <EdgeLogic.h>
+// ================================================================
+// YOU SHOULD NOT NEED TO CHANGE ANYTHING BELOW THIS LINE
+// ================================================================
+
 EdgeLogicPins elp[digitalPinCount];
 
 void setup() {
@@ -67,7 +73,7 @@ void setup() {
     // Create a Serial port and whatever is in the reportDescrition
     HID.begin(CompositeSerial, &jRD);
     USBComposite.begin();
-    while (!USBComposite) { }
+    while (!USBComposite);
 
     CustomJoystick.setManualReportMode(true);
 

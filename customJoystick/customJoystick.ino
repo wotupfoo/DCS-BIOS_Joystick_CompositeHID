@@ -37,9 +37,9 @@ const uint8 ReservedPins[]={PA13, // JTAG_TMS/SWDIO
     PA4/ADC4, PA5/ADC5, PA6/ADC6, PA7/ADC7, 
     PB0/ADC8, PB1,ADC9
 */
-const int analogPins[] = {PA0};
+//const int analogPins[] = {PA0};
 const int analogPins[] = {PA0, PA1, PA2};
-//const int analogPins[] = {  PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1};
+//const int analogPins[] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1};
 const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
 float filteredValues[analogPinCount];
 const float alpha = 0.5; // 0.15; Filter attack speed
@@ -114,10 +114,10 @@ void loop()
             CompositeSerial.print(currentVal);
 
             // Only change if it exceeds the noise deadband
-            if (abs((int)currentVal - (int)lastReport.axes[i]) > deadband) {
+            if (abs((int)currentVal - (int)lastReport.axis[i]) > deadband) {
                 CompositeSerial.print("*");
                 joy.axis(i, currentVal);
-                lastReport.axes[i] = currentVal;
+                lastReport.axis[i] = currentVal;
                 changed = true;
             }
             else {

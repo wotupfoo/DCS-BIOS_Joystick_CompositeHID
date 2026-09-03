@@ -120,7 +120,7 @@ void loop()
             uint16_t axis_mapped = (uint16_t)(axis + 2048);   // Move to center (2048)
             // Windows joy.cpl seems to prefer 10bit (0..1023) vs 12bit (0..4095)
             axis_mapped = axis_mapped >> 2; // 12bit to 10bit
-            int delta = abs((int)axis_mapped - (int)lastReport.axes[i]);
+            int delta = abs((int)axis_mapped - (int)lastReport.axis[i]);
 
             // Putting prints in the deadband test so it's no flooding the serial
             CompositeSerial.print("raw=");
@@ -132,14 +132,14 @@ void loop()
             CompositeSerial.print(" axis_mapped=");
             CompositeSerial.print(axis_mapped);
             CompositeSerial.print(" last");
-            CompositeSerial.print((int)lastReport.axes[i]);
+            CompositeSerial.print((int)lastReport.axis[i]);
             CompositeSerial.print(" delta=");
             CompositeSerial.print(delta);
             // Only change if it exceeds the noise deadband
             if (delta > mapped_deadband) {
                 CompositeSerial.print("*");
                 joy.axis(i, axis_mapped);
-                lastReport.axes[i] = axis_mapped;
+                lastReport.axis[i] = axis_mapped;
                 changed = true;
             }
             if(i < analogPinCount-1) {

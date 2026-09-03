@@ -23,7 +23,7 @@ HID_COLLECTION, HID_COLLECTION_APPLICATION,
   HID_INPUT, HID_INPUT_DATA_VAR_ABS,
 
   // -------------------------
-  // 6 Axes (16-bit each)
+  // 6 axis (16-bit each)
   // -------------------------
   HID_USAGE_PAGE, HID_USAGE_PAGE_GENERIC_DESKTOP,
   HID_LOGICAL_MIN, 0x00,
@@ -53,9 +53,9 @@ typedef struct __attribute__((packed, aligned(1))) {
   uint8_t  reportID;
   uint32_t buttons;
   union {
-//    uint16_t axes[8];
-//    uint16_t axes[3];
-    uint16_t axes[1];
+//    uint16_t axis[8];
+//    uint16_t axis[3];
+    uint16_t axis[1];
     struct {
 //      uint16_t x;
 //      uint16_t y;
@@ -78,15 +78,15 @@ protected:
   JoyReport_t joyReport;
   void safeSendReport(void);
   bool manualReport = false;
-  const uint8_t num_axes = (uint8_t)(sizeof(joyReport.axes)/sizeof(joyReport.axes[0]));
+  const uint8_t num_axis = (uint8_t)(sizeof(joyReport.axis)/sizeof(joyReport.axis[0]));
   const uint8_t num_buttons = 32;
 public:
   // Constructor
   HIDCustomJoystick(USBHID& HID, uint8_t reportID = HID_JOYSTICK_REPORT_ID)
     : HIDReporter(HID, &jRD, (uint8_t*)&joyReport, sizeof(joyReport), reportID) {
       joyReport.buttons = 0;
-      for (uint8_t i = 0; i < num_axes; i++)
-        joyReport.axes[i] = 0;
+      for (uint8_t i = 0; i < num_axis; i++)
+        joyReport.axis[i] = 0;
     }
 
   inline void send(void)
@@ -100,6 +100,6 @@ public:
   void button(uint8_t button, bool val);
   void buttons(uint32_t b);
   void axis(uint8_t analog, uint16_t val);
-  uint8_t getNumAxis() { return num_axes; }
+  uint8_t getNumAxis() { return num_axis; }
   uint8_t getNumButtons() { return num_buttons; };
 };

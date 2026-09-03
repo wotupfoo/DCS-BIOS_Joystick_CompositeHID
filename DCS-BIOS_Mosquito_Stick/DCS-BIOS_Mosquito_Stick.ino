@@ -19,29 +19,28 @@
 // Custom Joystick layout - 32 buttons, 8 axis (10bit range, 16bit packing)
 #include "HIDCustomJoystick.h"
 
-// The first endpoint will be the CompositeSerial followed by whatever is 
-// put in this array. Currently only a single custom configured joystick
-const uint8 reportDescription[] = {
-  HID_CUSTOM_JOYSTICK_REPORT_DESCRIPTOR()
-};
-
 USBHID HID;
 HIDCustomJoystick CustomJoystick(HID);
-CustomJoystickReport_t report, lastReport;
+const HIDReportDescriptor jRD = {
+  joystickReportDescriptor,         // report descriptor buffer
+  sizeof(joystickReportDescriptor)  // report descriptor size
+};
 USBCompositeSerial CompositeSerial;
+JoyReport_t report, lastReport;
+
 
 // ================================================================
 // Board Inputs
 // ================================================================
 // Analog Inputs
-const int analogPins[] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7};
+const int analogPins[] = {PA0, PA1, /*PA2,*/ PA3};   // Roll (x), Pitch (y), [Rudder (z)], Brake (slider)
 const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
 float filteredValues[analogPinCount];
 const float alpha = 0.15;
 const int deadband = 4; // Ignore changes smaller than this to suppress noise floors
 
-// Digital Inputs
-const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15}; // ACTIVE = LOW
+// Digital Inputs (ACTIVE = LOW)
+const int digitalPins[] = {PB13, PB14, PB15}; // Machine-Gun, 50mm Cannon, Pickle(Bomb)
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 #if (digitalPinCount > 8)   // The custom Joystick report has 32 buttons. 4 per input are needed -> 8 input max
 #error Too many digital input pins. Limit of 8 digitalPins to drive 32 joystick buttons (4 per digital input)
@@ -61,23 +60,28 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 // ADD YOUR DCS-BIOS DEVICES HERE
 // ================================================================
 // Flight controls are only sent/received over the Joystick HID device
-// analogPins[0] Stick Pitch
-// analogPins[1] Stick Roll
-// analogPins[2] Rudder Yaw
+// analogPins[0] Stick Roll (X)
+// analogPins[1] Stick Pitch (Y)
+// analogPins[2] Rudder (Z) (not implemented here)
 
 // DH-89 Mosquito Stick
+DcsBios::Potentiometer stickWheelBrk("STICK_WH_BRK", analogPins[3]); // Wheel brake lever
+
 DcsBios::Switch2Pos stickBtnA("STICK_BTN_A", digitalPins[0]);       // Machine Gun Trigger
 DcsBios::Switch2Pos stickBtnB1("STICK_BTN_B1", digitalPins[1]);     // Cannon Trigger
-DcsBios::Switch2Pos stickBtnB2("STICK_BTN_B2", digitalPins[2]);     // Ordinance Trigger (Bombs, Drop tanks)
-DcsBios::Switch2Pos stickWhBrkLock("STICK_WH_BRK_LOCK", digitalPins[3]);    // Wheel brake lock
-DcsBios::Potentiometer stickWhBrk("STICK_WH_BRK", analogPins[3]);           // Wheel brake lever
+DcsBios::Switch2Pos stickBtnB2("STICK_BTN_B2", digitalPins[2]);     // Pickle Trigger (Bombs, Drop tanks)
+//DcsBios::Switch2Pos stickWhBrkLock("STICK_WH_BRK_LOCK", digitalPins[3]);    // Wheel brake lock (not implemented on physical stick)
+
+// ================================================================
+// YOU SHOULD NOT NEED TO CHANGE ANYTHING BELOW THIS LINE
+// ================================================================
 
 EdgeLogicPins elp[digitalPinCount];
 
 void setup() {
     // MIDDLEWARE SETUP
     // Create a Serial port and whatever is in the reportDescrition
-    HID.begin(CompositeSerial, reportDescription, sizeof(reportDescription));
+    HID.begin(CompositeSerial, &jRD);
     USBComposite.begin();  
     while (!USBComposite);
 
@@ -115,7 +119,12 @@ void loop()
         }
     }
 
-    // 2. Process Buttons with Change Detection
+        // 2. Process Buttons with Debounce and Change Detection
+    // Each input pin drives 4 joystick buttons:
+    //  Debounced
+    //  Inverted Debounced (handy if the switch is electrically backwards)
+    //  Debounced Rising Edge pulse ("ON" pulse)
+    //  Debounced Falling Edge pulse ("OFF" pulse)
     for (int i = 0; i < digitalPinCount; i++)
     {
         elp[i].loop(); // Update Logic

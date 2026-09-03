@@ -19,16 +19,15 @@
 // Custom Joystick layout - 32 buttons, 8 axis (10bit range, 16bit packing)
 #include "HIDCustomJoystick.h"
 
-// The first endpoint will be the CompositeSerial followed by whatever is 
-// put in this array. Currently only a single custom configured joystick
-const uint8 reportDescription[] = {
-  HID_CUSTOM_JOYSTICK_REPORT_DESCRIPTOR()
-};
-
 USBHID HID;
 HIDCustomJoystick CustomJoystick(HID);
-CustomJoystickReport_t report, lastReport;
+const HIDReportDescriptor jRD = {
+  joystickReportDescriptor,         // report descriptor buffer
+  sizeof(joystickReportDescriptor)  // report descriptor size
+};
 USBCompositeSerial CompositeSerial;
+JoyReport_t report, lastReport;
+
 
 // ================================================================
 // Board Inputs
@@ -40,8 +39,8 @@ float filteredValues[analogPinCount];
 const float alpha = 0.15;
 const int deadband = 4; // Ignore changes smaller than this to suppress noise floors
 
-// Digital Inputs
-const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15}; // ACTIVE = LOW
+// Digital Inputs (ACTIVE = LOW)
+const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15};
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 #if (digitalPinCount > 8)   // The custom Joystick report has 32 buttons. 4 per input are needed -> 8 input max
 #error Too many digital input pins. Limit of 8 digitalPins to drive 32 joystick buttons (4 per digital input)
@@ -73,12 +72,16 @@ DcsBios::Switch2Pos rktSalvoSw("RKT_SALVO_SW", digitalPins[3]);     // On dashbo
 
 DcsBios::Switch2Pos supercharger("SUPERCHARGER", digitalPins[4]);
 
+// ================================================================
+// YOU SHOULD NOT NEED TO CHANGE ANYTHING BELOW THIS LINE
+// ================================================================
+
 EdgeLogicPins elp[digitalPinCount];
 
 void setup() {
     // MIDDLEWARE SETUP
     // Create a Serial port and whatever is in the reportDescrition
-    HID.begin(CompositeSerial, reportDescription, sizeof(reportDescription));
+    HID.begin(CompositeSerial, &jRD);
     USBComposite.begin();  
     while (!USBComposite);
 
