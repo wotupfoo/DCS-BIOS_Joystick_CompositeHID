@@ -27,9 +27,9 @@ HID_COLLECTION, HID_COLLECTION_APPLICATION,
   // -------------------------
   HID_USAGE_PAGE, HID_USAGE_PAGE_GENERIC_DESKTOP,
   HID_LOGICAL_MIN, 0x00,
-  HID_LOGICAL_MAX_16, 0xFF, 0x03,              // 0..1023 in a 16-bit field
-  HID_REPORT_SIZE, 0x10,
-  HID_REPORT_COUNT, 0x03,       // 3 Axis
+  HID_LOGICAL_MAX_16, 0xFF, 0x03,             // 0..1023 in a 16-bit field
+  HID_REPORT_SIZE, 0x10,                      // 16 bit packing
+  HID_REPORT_COUNT, 0x03,                     // 3 Axis
 
     HID_USAGE, HID_GD_X,
     HID_USAGE, HID_GD_Y,
