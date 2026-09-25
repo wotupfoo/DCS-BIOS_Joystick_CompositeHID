@@ -1,5 +1,68 @@
 #include <Arduino.h>
 
+#if defined(MCU_STM32F103C8)        // Bluepill 64k Flash 20k RAM
+    // Needs to be th C6 or C8 size. Smaller won't fit.
+    // Bluepill 64k Flash 20k RAM    Bluepill 32k Flash 10k RAM
+    #if !defined(MCU_STM32F103C8) && !defined(MCU_STM32F103C6)
+    #error "Unsupported-board: You need to use a Bluepill in the STM32F103C6 or C8 size"
+    #endif
+/*
+ * Arduino Bluepill 64k (STM32F103C8) pin usage for this device:
+ *
+ *                                      +------+
+ *                                 +----+ USBC +----+
+ *         PIN_SUPERCHARGER PB12 --|    +______+    +-- GND  << USE THIS
+ *                          PB13 --|                |-- GND  << USE THIS
+ *                          PB14 --|       ..       |-- 3V3  << USE THIS FOR ADC
+ *                          PB15 --|       ..       |-- nRST
+ *                          PA8  --|       ..       |-- PB11     PIN_RKT_SALVO_SW
+ *                          PA9  --|                |-- PB10     PIN_RKT_MASTER_SW
+ *                          PA10 --|    BLUEPILL    |-- PB1/ADC9 PIN_RKT_MAN_BTN
+ *                    USB-  PA11 --|  STM32F103C8   |-- PB0/ADC8 PIN_RKT_FIRING_SW
+ *                    USB+  PA12 --|                |-- PA7/ADC7
+ *                    JTDI  PA15 --|                |-- PA6/ADC6
+ *                    JTDO  PB3  --|                |-- PA5/ADC5
+ *                    JTRST PB4  --|                |-- PA4/ADC4 PIN_MIXTURE
+ *                          PB5  --|                |-- PA3/ADC3 PIN_THROTTLE_PROP_CONTROL_R
+ *                          PB6  --|                |-- PA2/ADC2 PIN_THROTTLE_PROP_CONTROL_L
+ *                          PB7  --|                |-- PA1/ADC1 PIN_THROTTLE_CONTROL_R
+ *                          PB8  --|                |-- PA0/ADC0 PIN_THROTTLE_CONTROL_L
+ *                          PB9  --|                |-- PC15
+ *                   USBIN  5V   --|                |-- PC14
+ *                          GND  --|    +------+    |-- PC13
+ *     *USE THIS FOR ADC >> 3V3  --|    | ISP  |    |-- VBAT
+ *                                 +----+ |||| +----+
+ *
+ * NOTE -   The STM32 ONLY supports 3v3 for ADC. So choose hall sensors accordingly!
+ *          The Authentikit MagHall sensor part is 5v. You need to use the equivalent
+ *          higly sensitivity (most are 1/10th the sensitivity) magnetic hall effect device.
+ *          Allegro A1319LUA-5-T 3.3v sensor - obsolete
+ *          Allegro A1315LUA-5-T 3.3v sensor - replacement
+ */
+
+ // Analog inputs
+#define PIN_THROTTLE_CONTROL_L      PA0
+#define PIN_THROTTLE_CONTROL_R      PA1
+#define PIN_THROTTLE_PROP_CONTROL_L PA2
+#define PIN_THROTTLE_PROP_CONTROL_R PA3
+#define PIN_MIXTURE                 PA4
+
+// Digital inputs
+#define PIN_RKT_FIRING_SW           PB0
+#define PIN_RKT_MAN_BTN             PB1
+#define PIN_RKT_MASTER_SW           PB10
+#define PIN_RKT_SALVO_SW            PB11
+#define PIN_SUPERCHARGER            PB12
+
+// Set the digital input to check on bootup to go into Calibration Mode
+#define CALIBRATION_MODE_BUTTON     PIN_RKT_MASTER_SW // Use the Rocket Fire Button on the Right Throttle
+
+#elif defined(ARDUINO_BLUEPILL_F103C8)
+    #error "You are building with the STM32duino Core. You must use the Roger Clark/Maple STM32 core"
+#else
+    #error "Unsupported board - Please use an Arduino STM32 Bluepill or implement your own"
+#endif
+
 // Input edge and debounce library
 // https://github.com/WotUpFoo/EdgeLogic
 // 1 input -> Button[n+0,1,2] = [debounce (level), inverted debounce (level), rise (pulse), fall (pulse)]
@@ -28,19 +91,20 @@ const HIDReportDescriptor jRD = {
 USBCompositeSerial CompositeSerial;
 JoyReport_t report, lastReport;
 
-
 // ================================================================
 // Board Inputs
 // ================================================================
 // Analog Inputs
-const int analogPins[] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7};
+const int analogPins[] = {  PIN_THROTTLE_CONTROL_L, PIN_THROTTLE_CONTROL_R,
+                            PIN_THROTTLE_PROP_CONTROL_L, PIN_THROTTLE_PROP_CONTROL_R,
+                            PIN_MIXTURE};
 const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
 float filteredValues[analogPinCount];
 const float alpha = 0.15;
 const int deadband = 4; // Ignore changes smaller than this to suppress noise floors
 
 // Digital Inputs (ACTIVE = LOW)
-const int digitalPins[] = {PB0, PB1, PB10, PB11, PB12, PB13, PB14, PB15};
+const int digitalPins[] = {PIN_RKT_FIRING_SW, PIN_RKT_MAN_BTN, PIN_RKT_MASTER_SW, PIN_RKT_SALVO_SW, PIN_SUPERCHARGER};
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 #if (digitalPinCount > 8)   // The custom Joystick report has 32 buttons. 4 per input are needed -> 8 input max
 #error Too many digital input pins. Limit of 8 digitalPins to drive 32 joystick buttons (4 per digital input)

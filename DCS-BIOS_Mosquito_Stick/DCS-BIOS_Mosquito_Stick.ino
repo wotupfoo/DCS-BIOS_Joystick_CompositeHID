@@ -1,6 +1,65 @@
 //#define DEBUG_SKETCH    // Uncomment to print out debug info on the Serial
-
 #include <Arduino.h>
+
+#if defined(ARDUINO_GENERIC_STM32F103C) 
+    // Needs to be th C6 or C8 size. Smaller won't fit.
+    // Bluepill 64k Flash 20k RAM    Bluepill 32k Flash 10k RAM
+    #if !defined(MCU_STM32F103C8) && !defined(MCU_STM32F103C6)
+    #error "Unsupported-board: You need to use a Bluepill in the STM32F103C6 or C8 size"
+    #endif
+/*
+ * Arduino Bluepill (STM32F103C6/STM32F103C8) pin usage for this device:
+ *
+ *                                      +------+
+ *                                 +----+ USBC +----+
+ *                          PB12 --|    +______+    +-- GND  << USE THIS
+ *                          PB13 --|                |-- GND  << USE THIS
+ *                          PB14 --|       ..       |-- 3V3  << USE THIS FOR ADC
+ *                          PB15 --|       ..       |-- nRST
+ *                          PA8  --|       ..       |-- PB11
+ *                          PA9  --|                |-- PB10
+ *                          PA10 --|    BLUEPILL    |-- PB1/ADC9
+ *                    USB-  PA11 --|  STM32F103C8   |-- PB0/ADC8
+ *                    USB+  PA12 --|                |-- PA7/ADC7
+ *                    JTDI  PA15 --|                |-- PA6/ADC6
+ *                    JTDO  PB3  --|                |-- PA5/ADC5
+ *                    JTRST PB4  --|                |-- PA4/ADC4
+ *                          PB5  --|                |-- PA3/ADC3 [OPTIONAL] PIN_RUDDER
+ *                          PB6  --|                |-- PA2/ADC2 PIN_WHEEL_BRAKE
+ *               PIN_PICKLE PB7  --|                |-- PA1/ADC1 PIN_ROLL
+ *               PIN_CANON  PB8  --|                |-- PA0/ADC0 PIN_PITCH
+ *               PIN_GUN    PB9  --|                |-- PC15
+ *                    USBIN 5V   --|                |-- PC14
+ *                          GND  --|    +------+    |-- PC13
+ *     *USE THIS FOR ADC >> 3V3  --|    | ISP  |    |-- VBAT
+ *                                 +----+ |||| +----+
+ *
+ * NOTE -   The STM32 ONLY supports 3v3 for ADC. So choose hall sensors accordingly!
+ *          The Authentikit MagHall sensor part is 5v. You need to use the equivalent
+ *          higly sensitivity (most are 1/10th the sensitivity) magnetic hall effect device.
+ *          Allegro A1319LUA-5-T 3.3v sensor - obsolete
+ *          Allegro A1315LUA-5-T 3.3v sensor - replacement
+ */
+
+ // Analog inputs
+#define PIN_PITCH       PA0
+#define PIN_ROLL        PA1
+#define PIN_WHEEL_BRAKE PA2
+//#define PIN_RUDDER      PA3 // This is not in the current build but could be added
+
+// Digital inputs
+#define PIN_PICKLE      PB7
+#define PIN_CANON       PB8
+#define PIN_GUN         PB9
+
+// Set the digital input to check on bootup to go into Calibration Mode
+#define CALIBRATION_MODE_BUTTON         PIN_GUN // Use the Machine Gun Button
+
+#elif defined(ARDUINO_BLUEPILL_F103C8)
+    #error "You are building with the STM32duino Core. You must use the Roger Clark/Maple STM32 core. The board type is Arduino_STM32:STM32F1:genericSTM32F103C:upload_method=STLinkMethod"
+#else
+    #error "Unsupported board - Please use an Arduino STM32 Bluepill or implement your own"
+#endif
 
 // ================================================================
 // Arduino Library - USB Device Driver 
@@ -30,8 +89,8 @@ JoyReport_t report, lastReport;
 // Board Inputs
 // ================================================================
 // Analog Inputs
-const int analogPins[] =     {PA1,  PA0,  PA2};   // Roll (x), Pitch (y), Brake (slider)
-const bool analogInvert[] = {true, true, false};   // Reverse the axis direction?
+const int analogPins[] =    {PIN_ROLL,  PIN_PITCH,  PIN_PICKLE};
+const bool analogInvert[] = {true,      true,       false};   // Reverse the axis direction?
 const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
 float filteredValues[analogPinCount];
 const float alpha = 0.15;
@@ -39,7 +98,7 @@ const int deadband = 2; // Ignore changes smaller than this to suppress noise fl
 uint16_t analogValues[analogPinCount];   // Array of ADC values
 
 // Digital Inputs (ACTIVE = LOW)
-const int digitalPins[] = {PB9, PB8, PB7}; // Machine-Gun, 50mm Canon, Pickle(Bomb)
+const int digitalPins[] = {PIN_CANON, PIN_CANON, PIN_PICKLE}; // Machine-Gun, 50mm Canon, Pickle(Bomb)
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 #if (digitalPinCount > 8)   // The custom Joystick report has 32 buttons. 4 per input are needed -> 8 input max
 #error Too many digital input pins. Limit of 8 digitalPins to drive 32 joystick buttons (4 per digital input)
@@ -62,7 +121,7 @@ bool digitalValues[digitalPinCount];      // Array of Digital Input values
 // Flight controls are only sent/received over the Joystick HID device
 // analogPins[0] Stick Roll (X)
 // analogPins[1] Stick Pitch (Y)
-// analogPins[2] Rudder (Z) (not implemented here)
+// analogPins[3] Rudder (Z) (not implemented here)
 
 // DH-89 Mosquito Stick
 DcsBios::Potentiometer stickWheelBrk("STICK_WH_BRK", analogPins[2]); // Wheel brake lever
@@ -76,6 +135,26 @@ DcsBios::Switch2Pos stickBtnB2("STICK_BTN_B2", digitalPins[2]);     // Pickle Tr
 // YOU SHOULD NOT NEED TO CHANGE ANYTHING BELOW THIS LINE
 // ================================================================
 
+// ======================================================================
+// HELPER ROUTINES
+// ======================================================================
+
+// ======================================================================
+// Debounced button helper
+bool buttonPressedDebounced(byte pin, bool level) {
+    bool i,j;
+    i = digitalRead(pin);
+    delay(25);
+    j = digitalRead(pin);
+    return (i == level && j == level);
+}
+
+// A flag to run in Calibration Mode or Normal Mode
+bool calibrationMode;
+
+// ======================================================================
+// SETUP
+// ======================================================================
 void setup() {
     // MIDDLEWARE SETUP
     // If you had a real USB registed company and product, you would
@@ -83,7 +162,7 @@ void setup() {
     //USBComposite.setVendorId(0x1209);              // allocated VID
     //USBComposite.setProductId(0x0001);             // allocated PID
     //USBComposite.setManufacturerString("github wotupfoo");
-    USBComposite.setProductString("Flight Stick");  // Easier Identification vs 'maple'
+    //USBComposite.setProductString("Flight Stick");  // Easier Identification vs 'maple'
 
     // Create a Serial port and whatever is in the reportDescription
     HID.begin(CompositeSerial, &jRD);
@@ -114,6 +193,9 @@ void setup() {
     }
 }
 
+// ======================================================================
+// LOOP
+// ======================================================================
 bool ANALOGchanged;
 bool DIGITALchanged;
 void loop()
