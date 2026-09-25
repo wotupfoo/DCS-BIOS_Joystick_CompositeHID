@@ -73,15 +73,20 @@ protected:
   JoyReport_t joyReport;
   void safeSendReport(void);
   bool manualReport = false;
-  const uint8_t num_axis = (uint8_t)(sizeof(joyReport.axis)/sizeof(joyReport.axis[0]));
-  const uint8_t num_buttons = 32;
-public:
+  static const uint8_t num_axis = (uint8_t)(sizeof(joyReport.axis)/sizeof(joyReport.axis[0]));
+  static const uint8_t num_buttons = 32;
+  bool axisInverted[num_axis];
+
+  public:
   // Constructor
   HIDCustomJoystick(USBHID& HID, uint8_t reportID = HID_JOYSTICK_REPORT_ID)
     : HIDReporter(HID, &jRD, (uint8_t*)&joyReport, sizeof(joyReport), reportID) {
       joyReport.buttons = 0;
       for (uint8_t i = 0; i < num_axis; i++)
+      {
         joyReport.axis[i] = 0;
+        axisInverted[i] = false;
+      }
     }
 
   inline void send(void)
@@ -94,7 +99,8 @@ public:
   void end(void);
   void button(uint8_t button, bool val);
   void buttons(uint32_t b);
-  void axis(uint8_t analog, uint16_t val);
-  uint8_t getNumAxis() { return num_axis; }
+  uint16_t axis(uint8_t analog, uint16_t val);
+  void invertAxis(uint8_t analog, bool inverted);  // true=invert axis
+  uint8_t getNumAxis() { return num_axis; };
   uint8_t getNumButtons() { return num_buttons; };
 };

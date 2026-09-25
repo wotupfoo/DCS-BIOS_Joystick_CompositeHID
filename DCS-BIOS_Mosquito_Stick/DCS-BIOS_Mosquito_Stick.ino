@@ -1,10 +1,6 @@
-#include <Arduino.h>
+//#define DEBUG_SKETCH    // Uncomment to print out debug info on the Serial
 
-// Input edge and debounce library
-// https://github.com/WotUpFoo/EdgeLogic
-// 1 input -> Button[n+0,1,2] = [debounce (level), inverted debounce (level), rise (pulse), fall (pulse)]
-// We will map each digital input to 4 buttons, [debounced,inverteddebounced,rising,falling]
-#include <EdgeLogic.h>
+#include <Arduino.h>
 
 // ================================================================
 // Arduino Library - USB Device Driver 
@@ -26,6 +22,7 @@ const HIDReportDescriptor jRD = {
   sizeof(joystickReportDescriptor)  // report descriptor size
 };
 USBCompositeSerial CompositeSerial;
+// There is no access to the Joystick report so keep a local copy
 JoyReport_t report, lastReport;
 
 
@@ -33,18 +30,21 @@ JoyReport_t report, lastReport;
 // Board Inputs
 // ================================================================
 // Analog Inputs
-const int analogPins[] = {PA0, PA1, /*PA2,*/ PA3};   // Roll (x), Pitch (y), [Rudder (z)], Brake (slider)
+const int analogPins[] =     {PA1,  PA0,  PA2};   // Roll (x), Pitch (y), Brake (slider)
+const bool analogInvert[] = {true, true, false};   // Reverse the axis direction?
 const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
 float filteredValues[analogPinCount];
 const float alpha = 0.15;
-const int deadband = 4; // Ignore changes smaller than this to suppress noise floors
+const int deadband = 2; // Ignore changes smaller than this to suppress noise floors
+uint16_t analogValues[analogPinCount];   // Array of ADC values
 
 // Digital Inputs (ACTIVE = LOW)
-const int digitalPins[] = {PB13, PB14, PB15}; // Machine-Gun, 50mm Cannon, Pickle(Bomb)
+const int digitalPins[] = {PB9, PB8, PB7}; // Machine-Gun, 50mm Canon, Pickle(Bomb)
 const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 #if (digitalPinCount > 8)   // The custom Joystick report has 32 buttons. 4 per input are needed -> 8 input max
 #error Too many digital input pins. Limit of 8 digitalPins to drive 32 joystick buttons (4 per digital input)
 #endif
+bool digitalValues[digitalPinCount];      // Array of Digital Input values
 
 // ================================================================
 // Middleware - DCS-BIOS, MobiFligt, SimTool etc
@@ -65,10 +65,10 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 // analogPins[2] Rudder (Z) (not implemented here)
 
 // DH-89 Mosquito Stick
-DcsBios::Potentiometer stickWheelBrk("STICK_WH_BRK", analogPins[3]); // Wheel brake lever
+DcsBios::Potentiometer stickWheelBrk("STICK_WH_BRK", analogPins[2]); // Wheel brake lever
 
 DcsBios::Switch2Pos stickBtnA("STICK_BTN_A", digitalPins[0]);       // Machine Gun Trigger
-DcsBios::Switch2Pos stickBtnB1("STICK_BTN_B1", digitalPins[1]);     // Cannon Trigger
+DcsBios::Switch2Pos stickBtnB1("STICK_BTN_B1", digitalPins[1]);     // Canon Trigger
 DcsBios::Switch2Pos stickBtnB2("STICK_BTN_B2", digitalPins[2]);     // Pickle Trigger (Bombs, Drop tanks)
 //DcsBios::Switch2Pos stickWhBrkLock("STICK_WH_BRK_LOCK", digitalPins[3]);    // Wheel brake lock (not implemented on physical stick)
 
@@ -76,76 +76,115 @@ DcsBios::Switch2Pos stickBtnB2("STICK_BTN_B2", digitalPins[2]);     // Pickle Tr
 // YOU SHOULD NOT NEED TO CHANGE ANYTHING BELOW THIS LINE
 // ================================================================
 
-EdgeLogicPins elp[digitalPinCount];
-
 void setup() {
     // MIDDLEWARE SETUP
-    // Create a Serial port and whatever is in the reportDescrition
+    // If you had a real USB registed company and product, you would
+    // set it here:
+    //USBComposite.setVendorId(0x1209);              // allocated VID
+    //USBComposite.setProductId(0x0001);             // allocated PID
+    //USBComposite.setManufacturerString("github wotupfoo");
+    USBComposite.setProductString("Flight Stick");
+
+    // Create a Serial port and whatever is in the reportDescription
     HID.begin(CompositeSerial, &jRD);
     USBComposite.begin();  
     while (!USBComposite);
 
     CustomJoystick.setManualReportMode(true);
-
     // HARDWARE SETUP
     for (int i = 0; i < analogPinCount; i++)
     {
         pinMode(analogPins[i], INPUT_ANALOG);
-        filteredValues[i] = analogRead(analogPins[i]);
+        CustomJoystick.invertAxis(i, analogInvert[i]); // Invert if needed
+        // Init the filter and lastReport or it'll never stop changing
+        int raw = analogRead(analogPins[i]);
+        filteredValues[i] = raw;
+        uint16_t currentVal = (uint16_t)filteredValues[i];
+        // Windows joy.cpl seems to prefer 10bit (0..1023) vs 12bit (0..4095)
+        analogValues[i] = currentVal >> 2; // 12bit to 10bit
+        report.axis[i] = CustomJoystick.axis(i, analogValues[i]);
+        lastReport.axis[i] = 0;     // This should trigger updates
     }
+
+    report.buttons = 0;
+    lastReport.buttons = 0;
     for (int i = 0; i < digitalPinCount; i++)
     {
-        elp[i] = EdgeLogicPins(i,INPUT_PULLUP);
+        pinMode(digitalPins[i],INPUT_PULLUP);
     }
 }
 
+bool ANALOGchanged;
+bool DIGITALchanged;
 void loop()
 {
+    int analogDiff[analogPinCount];
+
+    // Reset triggers
+    ANALOGchanged = false;
+    DIGITALchanged = false;
+
+    // 0. Process DCS-BIOS
     DcsBios::loop();
-    bool changed = false;
 
     // 1. Process Analog with Change Detection
     for (int i = 0; i < analogPinCount; i++)
     {
+        uint16_t currentVal;
+        uint16_t joystickVal;
+
         int raw = analogRead(analogPins[i]);
         filteredValues[i] = (alpha * raw) + ((1.0 - alpha) * filteredValues[i]);
-        uint16_t currentVal = (uint16_t)filteredValues[i];
+        currentVal = (uint16_t)filteredValues[i];
+        // Windows joy.cpl seems to prefer 10bit (0..1023) vs 12bit (0..4095)
+        analogValues[i] = currentVal >> 2; // 12bit to 10bit
 
         // Only change if it exceeds the noise deadband
-        if (abs((int)currentVal - (int)lastReport.axis[i]) > deadband)
+        analogDiff[i] = abs((int)analogValues[i] - (int)lastReport.axis[i]);
+        if (analogDiff[i] > deadband)
         {
-            CustomJoystick.axis(i, currentVal);
-            changed = true;
+            // .axis will return the value as-is or inverted if it is a reversed axis
+            report.axis[i] = CustomJoystick.axis(i, analogValues[i]);
+            ANALOGchanged = true;
         }
     }
 
-        // 2. Process Buttons with Debounce and Change Detection
-    // Each input pin drives 4 joystick buttons:
-    //  Debounced
-    //  Inverted Debounced (handy if the switch is electrically backwards)
-    //  Debounced Rising Edge pulse ("ON" pulse)
-    //  Debounced Falling Edge pulse ("OFF" pulse)
+    // 2. Process Buttons with Debounce and Change Detection
+    CustomJoystick.buttons(0);  // Clear all 32 buttons to have clean slate
+    report.buttons = 0;
     for (int i = 0; i < digitalPinCount; i++)
     {
-        elp[i].loop(); // Update Logic
-        EdgeLogicPins::outputstates_t outputstates = elp->getOutputState();
-        int currentbuttongroup = i*4;     // Debounced + InvertedDebounced + HighPulse + LowPulse = 4
-        // Buttons are 1..32 so use "1 +" in front of the current button
-        CustomJoystick.button(1 + currentbuttongroup + 0, outputstates.Debounced);
-        CustomJoystick.button(1 + currentbuttongroup + 1, outputstates.InvertedDebounced);
-        CustomJoystick.button(1 + currentbuttongroup + 2, outputstates.HighPulse);
-        CustomJoystick.button(1 + currentbuttongroup + 3, outputstates.LowPulse);
+        // Normal mode
+        digitalValues[i] = !digitalRead(digitalPins[i]);  // Active LOW
+        CustomJoystick.button(1 + i, digitalValues[i]);    // Buttons start at 1
+        report.buttons |= digitalValues[i] << i;    // 0..31 bits
     }
     if (report.buttons != lastReport.buttons)
-        changed = true;
+        DIGITALchanged = true;
 
     // 3. Conditional Send
-    if (changed)
+    if (ANALOGchanged || DIGITALchanged)
     {
+        // Send Joystick update to the PC
         CustomJoystick.send();
+        // Save for comparision next time around
         lastReport.buttons = report.buttons;
-        memcpy(lastReport.axis, report.axis, sizeof(report.axis)); // Sync
+        for (int i = 0; i < analogPinCount; i++)
+        { 
+            lastReport.axis[i] = report.axis[i]; 
+        }
     }
 
     delay(5); // Fast polling, but 'changed' logic prevents USB flooding
+
+#ifdef DEBUG_SKETCH
+    static char buf[150];
+    snprintf(buf,sizeof(buf), "Analog %u: Digital %u: Diff %04u:%04u:%04u Pitch %04u, Roll %04u, Brake %04u, Machine Gun %u, 50mm Canon %u, Pickle %u",
+                        ANALOGchanged, DIGITALchanged, 
+                        analogDiff[0], analogDiff[1], analogDiff[2],
+                        analogValues[0], analogValues[1], analogValues[2],
+                        digitalValues[0], digitalValues[1], digitalValues[2]
+                        );
+    CompositeSerial.println(buf);
+#endif
 }

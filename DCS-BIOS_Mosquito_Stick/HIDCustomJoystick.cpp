@@ -56,10 +56,20 @@ void HIDCustomJoystick::buttons(uint32_t b)
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
-void HIDCustomJoystick::axis(uint8_t analog, uint16_t val)
+uint16_t HIDCustomJoystick::axis(uint8_t analog, uint16_t val)
 {
     val = MIN(val,1023);    // Clamp to max range
+    if(axisInverted[analog])
+    {
+        val = 1023 - val;
+    }
 //ALREADY UNSIGNED    val = MAX(0,val);       // Clamp to min range
     joyReport.axis[analog] = val;
     safeSendReport();
+    return val;
+}
+
+void HIDCustomJoystick::invertAxis(uint8_t analog, bool inverted)
+{
+    axisInverted[analog] = inverted;
 }
