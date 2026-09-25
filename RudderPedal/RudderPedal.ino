@@ -67,7 +67,12 @@ const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
 void setup()
 {
     // MIDDLEWARE SETUP
-    HID.begin(CompositeSerial, &jRD);
+    //USBComposite.setVendorId(0x1209);              // allocated VID
+    //USBComposite.setProductId(0x0001);             // allocated PID
+    //USBComposite.setManufacturerString("github wotupfoo");
+    USBComposite.setProductString("Rudder");  // Easier Identification vs 'maple'
+
+   HID.begin(CompositeSerial, &jRD);
     USBComposite.begin();
     while (!USBComposite)
     {

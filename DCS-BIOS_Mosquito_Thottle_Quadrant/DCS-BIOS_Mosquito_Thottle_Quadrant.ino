@@ -80,6 +80,13 @@ EdgeLogicPins elp[digitalPinCount];
 
 void setup() {
     // MIDDLEWARE SETUP
+    // If you had a real USB registed company and product, you would
+    // set it here:
+    //USBComposite.setVendorId(0x1209);              // allocated VID
+    //USBComposite.setProductId(0x0001);             // allocated PID
+    //USBComposite.setManufacturerString("github wotupfoo");
+    USBComposite.setProductString("Throtte Quadrant");  // Easier Identification vs 'maple'
+
     // Create a Serial port and whatever is in the reportDescrition
     HID.begin(CompositeSerial, &jRD);
     USBComposite.begin();  

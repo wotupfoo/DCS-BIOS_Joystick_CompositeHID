@@ -83,7 +83,7 @@ void setup() {
     //USBComposite.setVendorId(0x1209);              // allocated VID
     //USBComposite.setProductId(0x0001);             // allocated PID
     //USBComposite.setManufacturerString("github wotupfoo");
-    USBComposite.setProductString("Flight Stick");
+    USBComposite.setProductString("Flight Stick");  // Easier Identification vs 'maple'
 
     // Create a Serial port and whatever is in the reportDescription
     HID.begin(CompositeSerial, &jRD);
