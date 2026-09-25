@@ -1,7 +1,58 @@
+//#define DEBUG_SKETCH    // Uncomment to print out debug info on the Serial
+
+#include <Arduino.h>
 #include <STM32ADC.h>
 #include <USBComposite.h>
 #include "HIDCustomJoystick.h"
 #include <string.h>
+
+#if defined(ARDUINO_GENERIC_STM32F103C) 
+    // Bluepill 64k Flash 20k RAM    Bluepill 32k Flash 10k RAM
+    #if !defined(MCU_STM32F103C8) && !defined(MCU_STM32F103C6)
+    #warning "Unsupported-board: You may need to use a Bluepill in the STM32F103C6 or C8 size"
+    #endif
+/*
+ * Arduino Bluepill (STM32F103C6/STM32F103C8) pin usage for this device:
+ *
+ *                                      +------+
+ *                                 +----+ USBC +----+
+ *                          PB12 --|    +______+    +-- GND  << USE THIS
+ *                          PB13 --|                |-- GND  << USE THIS
+ *                          PB14 --|       ..       |-- 3V3  << USE THIS FOR ADC
+ *                          PB15 --|       ..       |-- nRST
+ *                          PA8  --|       ..       |-- PB11
+ *                          PA9  --|                |-- PB10
+ *                          PA10 --|    BLUEPILL    |-- PB1/ADC9
+ *                    USB-  PA11 --|  STM32F103C8   |-- PB0/ADC8
+ *                    USB+  PA12 --|                |-- PA7/ADC7    PIN_RUDDER
+ *                    JTDI  PA15 --|                |-- PA6/ADC6
+ *                    JTDO  PB3  --|                |-- PA5/ADC5
+ *                    JTRST PB4  --|                |-- PA4/ADC4
+ *                          PB5  --|                |-- PA3/ADC3
+ *                          PB6  --|                |-- PA2/ADC2
+ *                          PB7  --|                |-- PA1/ADC1
+ *                          PB8  --|                |-- PA0/ADC0
+ *                          PB9  --|                |-- PC15
+ *                    USBIN 5V   --|                |-- PC14
+ *                          GND  --|    +------+    |-- PC13
+ *     *USE THIS FOR ADC >> 3V3  --|    | ISP  |    |-- VBAT
+ *                                 +----+ |||| +----+
+ *
+ * NOTE -   The STM32 ONLY supports 3v3 for ADC. So choose hall sensors accordingly!
+ *          The Authentikit MagHall sensor part is 5v. You need to use the equivalent
+ *          higly sensitivity (most are 1/10th the sensitivity) magnetic hall effect device.
+ *          Allegro A1319LUA-5-T 3.3v sensor - obsolete
+ *          Allegro A1315LUA-5-T 3.3v sensor - replacement
+ */
+
+ // Analog inputs
+#define PIN_RUDDER      PA7
+#elif defined(ARDUINO_BLUEPILL_F103C8)
+    #error "You are building with the STM32duino Core. You must use the Roger Clark/Maple STM32 core. The board type is Arduino_STM32:STM32F1:genericSTM32F103C:upload_method=STLinkMethod"
+#else
+    #error "Unsupported board - Please use an Arduino STM32 Bluepill or implement your own"
+#endif
+
 
 STM32ADC adc(ADC1); // direct hardware control of the ADC vs using the Arduino library
 USBHID HID;
@@ -16,53 +67,11 @@ JoyReport_t report, lastReport;
 // ================================================================
 // Board Inputs
 // ================================================================
-// All GPIO pins counter clockwise (not checked if using them is valid)
-/*
-const uint8 allPins[]={ PB12, PB13, PB14, PB15,
-                        PA0,  PA1,  PA2,  PA3,  PA4,  PA5,  PA6, PA7,
-                        PB0,  PB1,
-                        PB10, PB11, PB12, PB13, PB14, PB15,
-                        PA8,  PA9,  PA10, PA11, PA12, PA15,
-                        PB3,  PB4,  PB5,  PB6,  PB7,  PA8,  PA9,
-                        PC13, PC14, PC15 }; // ACTIVE = LOW
-*/
-/*  RESERVED
-const uint8 ReservedPins[]={PA13, // JTAG_TMS/SWDIO
-                            PA14, // JTAG_TCK/SWCLK
-                            PB2,  // BOOT1
-                            PB3}; // JTAG_TRACE/SWO (IF ENABLED) 
-*/
-
-// ================================================================
-// Analog Inputs
-/*  3.3v max ADC Channels
-    PA0/ADC0, PA1/ADC1, PA2/ADC2, PA3/ADC4, 
-    PA4/ADC4, PA5/ADC5, PA6/ADC6, PA7/ADC7, 
-    PB0/ADC8, PB1,ADC9
-*/
-const int analogPins[] = {PA7};
+const int analogPins[] = {PIN_RUDDER};
 const int analogPinCount = sizeof(analogPins) / sizeof(analogPins[0]);
 float filteredValues[analogPinCount];
 const float alpha = 0.25; // 0.15; Filter attack speed
 const int mapped_deadband = 3; // Ignore changes smaller than this to suppress noise floors
-
-/*
-// ================================================================
-// Digital Inputs
-const int digitalPins[] = { PB12, PB13, PB14, PB15,
-                    // ADC  PA0,  PA1,  PA2,  PA3,  PA4,  PA5,  PA6, PA7,
-                    // ADC  PB0,  PB1,
-                            PB10, PB11, PB12, PB13, PB14, PB15,
-                            PA8,  PA9,  PA10, PA11, PA12, PA15,
-                            PB3,  PB4,  PB5,  PB6,  PB7,  PA8,  PA9,
-                            PC13, PC14, PC15 }; // ACTIVE = LOW
-const int digitalPins1[] = {PB12, PB13, PB14, PB15, PA8,  PA9,  PA10, PA11}; // ACTIVE = LOW
-const int digitalPins2[] = {PA12, PA15, PB10, PB11}; // ACTIVE = LOW
-const int digitalPinCount = sizeof(digitalPins) / sizeof(digitalPins[0]);
-#if (digitalPinCount > 8)   // The custom Joystick report has 32 buttons. 4 per input are needed -> 8 input max
-#error Too many digital input pins. Limit of 8 digitalPins to drive 32 joystick buttons (4 per digital input)
-#endif
-*/
 
 void setup()
 {
@@ -127,6 +136,7 @@ void loop()
             axis_mapped = axis_mapped >> 2; // 12bit to 10bit
             int delta = abs((int)axis_mapped - (int)lastReport.axis[i]);
 
+#if defined(DEBUG_SKETCH)
             // Putting prints in the deadband test so it's no flooding the serial
             CompositeSerial.print("raw=");
             CompositeSerial.print(raw);
@@ -140,16 +150,21 @@ void loop()
             CompositeSerial.print((int)lastReport.axis[i]);
             CompositeSerial.print(" delta=");
             CompositeSerial.print(delta);
+#endif
             // Only change if it exceeds the noise deadband
             if (delta > mapped_deadband) {
+#if defined(DEBUG_SKETCH)
                 CompositeSerial.print("*");
+#endif
                 joy.axis(i, axis_mapped);
                 lastReport.axis[i] = axis_mapped;
                 changed = true;
             }
+#if defined(DEBUG_SKETCH)
             if(i < analogPinCount-1) {
                 CompositeSerial.print("\t : ");
             }
+#endif
         }
         // 2. Process Digital
 
