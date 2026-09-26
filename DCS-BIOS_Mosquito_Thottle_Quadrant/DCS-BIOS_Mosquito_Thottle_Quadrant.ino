@@ -1,10 +1,9 @@
 #include <Arduino.h>
 
 #if defined(MCU_STM32F103C8)        // Bluepill 64k Flash 20k RAM
-    // Needs to be th C6 or C8 size. Smaller won't fit.
-    // Bluepill 64k Flash 20k RAM    Bluepill 32k Flash 10k RAM
-    #if !defined(MCU_STM32F103C8) && !defined(MCU_STM32F103C6)
-    #error "Unsupported-board: You need to use a Bluepill in the STM32F103C6 or C8 size"
+    //  Bluepill 128k Flash 20k RAM  Bluepill 64k Flash 20k RAM   Bluepill 32k Flash 10k RAM
+    #if !defined(MCU_STM32F103CB) && !defined(MCU_STM32F103C8) && !defined(MCU_STM32F103C6)
+    #error "Unsupported-board: You need to use a Bluepill in the STM32F103C6, C8 or CB size"
     #endif
 /*
  * Arduino Bluepill 64k (STM32F103C8) pin usage for this device:
